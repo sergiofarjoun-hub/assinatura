@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hamsa PWA — preview / validação</title>
+<!-- Linka o manifest do Command Center só para a aba DevTools > Application mostrar algo aqui.
+     A validação real (Lighthouse) roda em cada app servido no seu scope. -->
+<link rel="manifest" href="/manifests/command-center.webmanifest">
+<meta name="theme-color" content="#0b1424">
+<link rel="apple-touch-icon" href="/icons/command-center-192.png">
+<style>
+  :root{color-scheme:dark}
+  body{margin:0;background:#0b1424;color:#e8edf5;font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+  header{padding:32px 24px 8px;max-width:900px;margin:0 auto}
+  h1{margin:0 0 4px;font-size:22px}
+  p.sub{margin:0;color:#9fb0c8;font-size:14px}
+  main{max-width:900px;margin:0 auto;padding:16px 24px 48px;
+       display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px}
+  .card{background:#111d33;border:1px solid #1f2f4a;border-radius:14px;padding:16px;display:flex;gap:14px;align-items:center}
+  .card img{width:64px;height:64px;border-radius:14px;flex:0 0 auto}
+  .card .meta{min-width:0}
+  .card b{display:block;font-size:15px}
+  .card code{color:#8fb3ff;font-size:12px;word-break:break-all}
+  .card a{color:#9fb0c8;font-size:12px;text-decoration:none}
+  .card a:hover{color:#fff;text-decoration:underline}
+  footer{max-width:900px;margin:0 auto;padding:0 24px 48px;color:#7d8ca6;font-size:13px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Ícones PWA — Hamsa Group</h1>
+  <p class="sub">Página de preview/validação local. Sirva a RAIZ do repo
+    (<code>python3 -m http.server 8080</code>) e abra <code>/preview/</code>.</p>
+</header>
+<main id="grid"></main>
+<footer>
+  <p><b>Validação (Fase 4):</b> DevTools (F12) → Application → Manifest confere o
+  manifest do Command Center linkado aqui. Para os demais, abra o app no seu scope
+  real e rode Lighthouse → PWA → “Installable”. Estes ícones são interinos
+  (variações de cor da marca) até exportar os ícones reais do sidebar no Mac.</p>
+</footer>
+<script>
+const apps=[
+ ["command-center","Command Center","/","#e7dc8a"],
+ ["renovacoes","Renovações","/renovacoes/","#7fce97"],
+ ["claims","Claims","/claims/","#e6b064"],
+ ["pipeline","Sales Pipeline","/pipeline/","#7fb0ea"],
+ ["multicalculo","Multi Cálculo","/multicalculo/","#66c9c4"],
+ ["multiapolices","Multi Apólices","/multiapolices/","#b58fe0"],
+];
+document.getElementById('grid').innerHTML=apps.map(([slug,name,scope,c])=>`
+  <div class="card">
+    <img src="/icons/${slug}-192.png" alt="${name}">
+    <div class="meta">
+      <b style="color:${c}">${name}</b>
+      <code>${scope}</code><br>
+      <a href="/manifests/${slug}.webmanifest">ver manifest ›</a>
+    </div>
+  </div>`).join('');
+</script>
+</body>
+</html>
