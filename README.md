@@ -13,8 +13,7 @@ do Android, sem barra do navegador) aos apps Hamsa. Produzidos a partir do símb
 
 ```
 icons/
-  <app>-192.png / <app>-512.png   # 1 ícone DISTINTO por app (6 apps × 2 tamanhos)
-  hamsa-192.png / hamsa-512.png   # ícone base neutro (fallback da marca)
+  hamsa-192.png / hamsa-512.png   # ícone único da marca (navy) usado por todos os apps
 manifests/
   command-center.webmanifest   scope /
   renovacoes.webmanifest       scope /renovacoes/
@@ -29,16 +28,16 @@ preview/
 hamsa_group_insurance.png  # logo de origem
 ```
 
-Os ícones usam **só o símbolo da hamsa 2026** (dourado 3D, sem texto),
-centralizado com zona de segurança (~68% do canvas). Por serem opacos servem ao
-mesmo tempo como `any`, `maskable` e `apple-touch-icon`.
+O ícone usa **só o símbolo da hamsa 2026** (dourado 3D, sem texto — o texto some
+no tamanho de ícone), centralizado com zona de segurança (~68% do canvas) sobre o
+navy da marca `#0b1424`. Por ser opaco serve ao mesmo tempo como `any`, `maskable`
+e `apple-touch-icon`.
 
-**Símbolo dourado igual em todos, fundo escuro distinto por app** pra diferenciar
-na home (o `background_color`/`theme_color` de cada manifest combina com o fundo):
-Command Center navy `#0b1424` · Renovações verde `#0d2a1a` · Claims âmbar `#2a1c0a` ·
-Pipeline azul `#0a1c33` · Multi Cálculo teal `#06292a` · Multi Apólices roxo `#1b1030`.
+**Os 6 apps usam o mesmo ícone e o mesmo fundo navy `#0b1424`** (também no
+`background_color`/`theme_color` de cada manifest); a distinção na home é pelo
+**nome** de cada app.
 
-## Escopos por app (cada um DISTINTO → 6 ícones separados)
+## Escopos por app (cada um com scope DISTINTO)
 
 | App            | start_url / scope  | manifest                          |
 |----------------|--------------------|-----------------------------------|
@@ -55,22 +54,20 @@ Pipeline azul `#0a1c33` · Multi Cálculo teal `#06292a` · Multi Apólices roxo
 > separados **não** vão funcionar sem reorganizar as rotas; nesse caso o caminho
 > honesto é 1 PWA (Command Center) + atalhos simples. **Decidir só depois de mapear.**
 
-## Trocar pelos ícones reais do sidebar (opcional, no Mac)
+## Ícone próprio por app (opcional, no Mac)
 
-Hoje todos usam o mesmo símbolo dourado (fundo distinto por app). Se cada app
-tiver um ícone próprio no sidebar e você quiser usá-lo, no **Mac**:
+Hoje os 6 usam o mesmo ícone da marca. Se um app tiver ícone próprio e você
+quiser usá-lo, no **Mac** gere os dois tamanhos e aponte o manifest daquele app:
 
 ```bash
-# exporte o ícone do app e gere os dois tamanhos, mantendo os nomes
-sips -z 192 192 command-center.png --out icons/command-center-192.png
-sips -z 512 512 command-center.png --out icons/command-center-512.png
+sips -z 192 192 renovacoes.png --out icons/renovacoes-192.png
+sips -z 512 512 renovacoes.png --out icons/renovacoes-512.png
+# depois, em manifests/renovacoes.webmanifest, troque os "src" de
+# /icons/hamsa-*.png para /icons/renovacoes-*.png
 ```
 
-Como os nomes são os mesmos que os manifests já referenciam
-(`/icons/<app>-192.png` e `-512.png`), basta sobrescrever os arquivos —
-**não precisa editar os manifests**. (Se o ícone real não for quadrado nem
-tiver zona de segurança, o `purpose:"maskable"` pode cortar; nesse caso deixe
-só `purpose:"any"` naquele manifest.)
+(Se o ícone não for quadrado nem tiver zona de segurança, o `purpose:"maskable"`
+pode cortar; nesse caso deixe só `purpose:"any"` naquele manifest.)
 
 ## Validação local (Fase 4 — faça antes do NAS)
 

@@ -37,22 +37,22 @@
 <footer>
   <p><b>Validação (Fase 4):</b> DevTools (F12) → Application → Manifest confere o
   manifest do Command Center linkado aqui. Para os demais, abra o app no seu scope
-  real e rode Lighthouse → PWA → “Installable”. Ícones gerados do
-  <code>hamsa_simbolo_2026.png</code> (símbolo dourado), com fundo escuro
-  distinto por app.</p>
+  real e rode Lighthouse → PWA → “Installable”. Ícone único gerado do
+  <code>hamsa_simbolo_2026.png</code> (símbolo dourado) sobre navy
+  <code>#0b1424</code>; a distinção entre apps é pelo nome.</p>
 </footer>
 <script>
 const apps=[
- ["command-center","Command Center","/","#0b1424"],
- ["renovacoes","Renovações","/renovacoes/","#0d2a1a"],
- ["claims","Claims","/claims/","#2a1c0a"],
- ["pipeline","Sales Pipeline","/pipeline/","#0a1c33"],
- ["multicalculo","Multi Cálculo","/multicalculo/","#06292a"],
- ["multiapolices","Multi Apólices","/multiapolices/","#1b1030"],
+ ["command-center","Command Center","/"],
+ ["renovacoes","Renovações","/renovacoes/"],
+ ["claims","Claims","/claims/"],
+ ["pipeline","Sales Pipeline","/pipeline/"],
+ ["multicalculo","Multi Cálculo","/multicalculo/"],
+ ["multiapolices","Multi Apólices","/multiapolices/"],
 ];
-document.getElementById('grid').innerHTML=apps.map(([slug,name,scope,c])=>`
-  <div class="card" style="border-color:${c};box-shadow:inset 3px 0 0 ${c}">
-    <img src="/icons/${slug}-192.png" alt="${name}">
+document.getElementById('grid').innerHTML=apps.map(([slug,name,scope])=>`
+  <div class="card">
+    <img src="/icons/hamsa-192.png" alt="${name}">
     <div class="meta">
       <b style="color:#e7d9a0">${name}</b>
       <code>${scope}</code><br>

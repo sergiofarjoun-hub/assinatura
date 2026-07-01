@@ -5,29 +5,29 @@
   "scope": "/claims/",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#2a1c0a",
-  "theme_color": "#2a1c0a",
+  "background_color": "#0b1424",
+  "theme_color": "#0b1424",
   "icons": [
     {
-      "src": "/icons/claims-192.png",
+      "src": "/icons/hamsa-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icons/claims-512.png",
+      "src": "/icons/hamsa-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icons/claims-192.png",
+      "src": "/icons/hamsa-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "maskable"
     },
     {
-      "src": "/icons/claims-512.png",
+      "src": "/icons/hamsa-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
