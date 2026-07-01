@@ -1,12 +1,11 @@
 <!--
-  Cole no <head> de CADA app. Troque APENAS o slug ("command-center") pelo
-  slug do app correspondente (renovacoes | claims | pipeline | multicalculo | multiapolices).
-  Exemplo abaixo: Command Center.
+  Cole no <head> de CADA app (index.html). Caminhos RELATIVOS de propósito:
+  o mesmo bloco funciona quer o app rode na raiz (/) quer num subpath (/claims/).
+  Troque só o nome no manifest (arquivo manifest.webmanifest por app).
 -->
-<link rel="manifest" href="/manifests/command-center.webmanifest">
+<link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#0b1424">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="apple-touch-icon" href="/icons/command-center-192.png">
-<link rel="icon" type="image/png" sizes="512x512" href="/icons/command-center-512.png">
+<link rel="apple-touch-icon" href="icons/hamsa-192.png">

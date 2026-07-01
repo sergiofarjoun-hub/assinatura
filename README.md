@@ -48,11 +48,10 @@ e `apple-touch-icon`.
 | Multi Cálculo  | `/multicalculo/`   | `multicalculo.webmanifest`        |
 | Multi Apólices | `/multiapolices/`  | `multiapolices.webmanifest`       |
 
-> Os caminhos acima são **provisórios** — vêm da tabela do runbook e **precisam
-> ser confirmados pela Fase 1** (descoberta da arquitetura real no NAS). Se os 6
-> apps forem só estados internos de um único SPA na raiz (Cenário C), scopes
-> separados **não** vão funcionar sem reorganizar as rotas; nesse caso o caminho
-> honesto é 1 PWA (Command Center) + atalhos simples. **Decidir só depois de mapear.**
+> **Fase 1 concluída:** cada app é um serviço próprio numa porta separada no NAS
+> (Cenário B). Os paths acima são reais, servidos via `tailscale serve`. Os
+> manifests usam caminhos **relativos** (`./icons/...`, `start_url`/`scope` = `./`),
+> então o mesmo bundle funciona em qualquer path. **Deploy: ver [`DEPLOY.md`](DEPLOY.md).**
 
 ## Ícone próprio por app (opcional, no Mac)
 
@@ -83,17 +82,16 @@ No Chrome desktop:
 2. DevTools (F12) → **Application → Manifest**: name, ícones carregando, sem erros.
 3. **Lighthouse → PWA** → "Installable" ✓ (rode em cada app no seu scope real).
 
-## O que falta (rodar no Mac, com OK do Sergio)
+## O que falta (rodar no NAS/Mac, com OK do Sergio) → ver DEPLOY.md
 
-- [ ] **Fase 1 — Descoberta:** mapear o que escuta na :10000, se é Docker, onde
-      está o HTML, e se cada app é path/porta/SPA. Preencher a tabela e escolher
-      Cenário A/B/C. **Confirmar os scopes acima.**
+- [x] **Fase 1 — Descoberta:** feito. Cenário B — cada app numa porta no NAS
+      `100.94.13.31` (Command Center 4000, Renovações 3001, Claims 9292,
+      Multi Cálculo 9191, Multi Apólices 8080; Sales Pipeline: porta a confirmar).
 - [ ] **Pré-req tailnet:** HTTPS Certificates + MagicDNS habilitados.
-- [ ] **Fase 2 — HTTPS:** `tailscale serve --bg http://localhost:10000`
-      (ou `--set-path` por serviço, Cenário B). Validar com `curl -sI https://…`.
-- [ ] **Fase 4 — Validação local** dos 6 manifests (acima).
-- [ ] **Fase 5 — Deploy (1× só, após "pode deploy"):** backup → copiar `icons/`,
-      `manifests/` e os `<head>` alterados → verificar
-      `curl -sI https://hamsa-usa.taild4370d.ts.net/manifests/command-center.webmanifest`.
-      **1 falha → PARAR**, voltar pro Mac.
-- [ ] **Android:** abrir cada URL no Chrome (Tailscale conectado) → Install app.
+- [ ] **Passo 0 — Teste de subpath** (DEPLOY.md): 1 comando `tailscale serve` no
+      NAS pra decidir se os apps rodam em `/claims` etc. sem ajuste de base path.
+- [ ] **Passo 1 — HTTPS pra todos:** `tailscale serve --set-path` por app (DEPLOY.md).
+- [ ] **Passo 2 — Deploy (1× só, com backup):** copiar `icons/` + `manifest.webmanifest`
+      pra cada app e colar o `<head>`. **1 falha → PARAR.**
+- [ ] **Passo 3 — Verificar:** `curl -sI https://hamsa-usa.taild4370d.ts.net/claims/manifest.webmanifest`.
+- [ ] **Passo 4 — Android:** abrir cada path no Chrome (Tailscale ligado) → Instalar app.
