@@ -5,8 +5,8 @@
   "scope": "/claims/",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#0b1424",
-  "theme_color": "#0b1424",
+  "background_color": "#2a1c0a",
+  "theme_color": "#2a1c0a",
   "icons": [
     {
       "src": "/icons/claims-192.png",

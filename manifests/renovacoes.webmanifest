@@ -5,8 +5,8 @@
   "scope": "/renovacoes/",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#0b1424",
-  "theme_color": "#0b1424",
+  "background_color": "#0d2a1a",
+  "theme_color": "#0d2a1a",
   "icons": [
     {
       "src": "/icons/renovacoes-192.png",

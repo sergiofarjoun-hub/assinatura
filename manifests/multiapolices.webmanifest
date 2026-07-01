@@ -5,8 +5,8 @@
   "scope": "/multiapolices/",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#0b1424",
-  "theme_color": "#0b1424",
+  "background_color": "#1b1030",
+  "theme_color": "#1b1030",
   "icons": [
     {
       "src": "/icons/multiapolices-192.png",

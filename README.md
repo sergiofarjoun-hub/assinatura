@@ -1,8 +1,8 @@
 # PWA assets — ícones na Home para os apps Hamsa
 
 Artefatos **prontos para deploy** que dão identidade PWA (ícone standalone na home
-do Android, sem barra do navegador) aos apps Hamsa. Produzidos a partir do logo
-`hamsa_group_insurance.png`.
+do Android, sem barra do navegador) aos apps Hamsa. Produzidos a partir do símbolo
+**2026** `hamsa_simbolo_2026.png` (hamsa dourado 3D, fundo transparente).
 
 > ⚠️ **Estes arquivos são a Fase 3 do runbook.** As fases que tocam o NAS/Tailscale
 > (Fase 1 — descoberta, Fase 2 — `tailscale serve`, Fase 5 — deploy) **não foram
@@ -29,15 +29,14 @@ preview/
 hamsa_group_insurance.png  # logo de origem
 ```
 
-Os ícones usam **só o símbolo da hamsa** (sem o texto "HAMSA GROUP INSURANCE",
-que fica ilegível e seria cortado no recorte circular/maskable do Android),
-centralizado com zona de segurança (~70% do canvas) sobre o fundo da marca
-`#0b1424`. Por serem opacos servem ao mesmo tempo como `any`, `maskable` e
-`apple-touch-icon`.
+Os ícones usam **só o símbolo da hamsa 2026** (dourado 3D, sem texto),
+centralizado com zona de segurança (~68% do canvas). Por serem opacos servem ao
+mesmo tempo como `any`, `maskable` e `apple-touch-icon`.
 
-**Cada app tem cor própria** (variação da marca) pra ficar distinguível na home:
-Command Center dourado · Renovações verde · Claims âmbar · Pipeline azul ·
-Multi Cálculo teal · Multi Apólices roxo.
+**Símbolo dourado igual em todos, fundo escuro distinto por app** pra diferenciar
+na home (o `background_color`/`theme_color` de cada manifest combina com o fundo):
+Command Center navy `#0b1424` · Renovações verde `#0d2a1a` · Claims âmbar `#2a1c0a` ·
+Pipeline azul `#0a1c33` · Multi Cálculo teal `#06292a` · Multi Apólices roxo `#1b1030`.
 
 ## Escopos por app (cada um DISTINTO → 6 ícones separados)
 
@@ -58,8 +57,8 @@ Multi Cálculo teal · Multi Apólices roxo.
 
 ## Trocar pelos ícones reais do sidebar (opcional, no Mac)
 
-Os ícones atuais são **interinos** — variações de cor do símbolo da marca.
-Para usar o ícone real de cada app (o que aparece no sidebar), no **Mac**:
+Hoje todos usam o mesmo símbolo dourado (fundo distinto por app). Se cada app
+tiver um ícone próprio no sidebar e você quiser usá-lo, no **Mac**:
 
 ```bash
 # exporte o ícone do app e gere os dois tamanhos, mantendo os nomes
