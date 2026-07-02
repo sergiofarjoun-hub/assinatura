@@ -14,7 +14,7 @@ em cada app.
 | Claims         | 9292                | 10000               | `https://hamsa-usa.taild4370d.ts.net:10000/`    |
 | Multi Cálculo  | 9191                | 10001               | `https://hamsa-usa.taild4370d.ts.net:10001/`    |
 | Multi Apólices | 8080                | 10002               | `https://hamsa-usa.taild4370d.ts.net:10002/`    |
-| Sales Pipeline | **?** (confirmar)   | 10003               | `https://hamsa-usa.taild4370d.ts.net:10003/`    |
+| Sales Pipeline | 5556 (`hamsa-crm`)  | 10003               | `https://hamsa-usa.taild4370d.ts.net:10003/`    |
 
 > **Por que 1 porta HTTPS por app:** cada porta é uma **origem** própria → cada
 > app vira um PWA independente (nome + ícone próprios), servido na raiz `/`,
@@ -44,7 +44,7 @@ Settings → Features: **HTTPS Certificates** + **MagicDNS** habilitados.
 
 Executado como `Hamsa_Group@Hamsa_USA` (Tailscale 1.98.2). `serve status` confirma
 os 5 proxies ativos (443→4000, 8443→3001, 10000→9292, 10001→9191, 10002→8080).
-Falta só o Sales Pipeline (porta a confirmar). Comandos usados:
+Sales Pipeline confirmado depois: hamsa-crm:5556 → HTTPS 10003. Comandos usados:
 
 ```bash
 TS=/var/packages/Tailscale/target/bin/tailscale
@@ -57,7 +57,7 @@ sudo $TS serve --bg --https=8443  http://127.0.0.1:3001   # Renovações
 sudo $TS serve --bg --https=10000 http://127.0.0.1:9292   # Claims
 sudo $TS serve --bg --https=10001 http://127.0.0.1:9191   # Multi Cálculo
 sudo $TS serve --bg --https=10002 http://127.0.0.1:8080   # Multi Apólices
-# sudo $TS serve --bg --https=10003 http://127.0.0.1:PORTA_PIPELINE  # Sales Pipeline
+sudo $TS serve --bg --https=10003 http://127.0.0.1:5556   # Sales Pipeline (hamsa-crm)
 sudo $TS serve status
 ```
 
@@ -74,7 +74,7 @@ Claims com cadeado válido (o primeiro acesso pode demorar ~10s emitindo o certi
 Todos os apps são containers Docker no `hamsa-usa`:
 `hamsa-command-center`:4000 · `renovacoes-app`:3001 · `claims-app`:9292 ·
 `hamsa-cotacao`:9191 (Multi Cálculo) · `multi-apolices`:8080 ·
-`hamsa-crm`:5556→5555 (provável Sales Pipeline — confirmar).
+`hamsa-crm`:5556→5555 (= Sales Pipeline, confirmado).
 Outros (fora de escopo por ora): `hamsa-cotacao-nacional`:9192, `mc-usa`:11000,
 `multi-apolices-travel`:8083, `hamsa-apoio`:8090, `docuseal`:3010.
 
