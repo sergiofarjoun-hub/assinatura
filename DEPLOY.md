@@ -69,6 +69,15 @@ Claims com cadeado válido (o primeiro acesso pode demorar ~10s emitindo o certi
 > `curl -sI http://127.0.0.1:9292 | head -1` — se não responder, o serviço
 > precisa escutar também em localhost (ou 0.0.0.0).
 
+## Containers no NAS (descoberto 2026-07-02)
+
+Todos os apps são containers Docker no `hamsa-usa`:
+`hamsa-command-center`:4000 · `renovacoes-app`:3001 · `claims-app`:9292 ·
+`hamsa-cotacao`:9191 (Multi Cálculo) · `multi-apolices`:8080 ·
+`hamsa-crm`:5556→5555 (provável Sales Pipeline — confirmar).
+Outros (fora de escopo por ora): `hamsa-cotacao-nacional`:9192, `mc-usa`:11000,
+`multi-apolices-travel`:8083, `hamsa-apoio`:8090, `docuseal`:3010.
+
 ## Passo 2 — Manifest + ícones em cada app (no NAS, com backup)
 
 Para cada app, no diretório servido (raiz dos arquivos web / `public/`):
