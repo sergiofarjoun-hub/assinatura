@@ -40,7 +40,11 @@ Settings → Features: **HTTPS Certificates** + **MagicDNS** habilitados.
 - O certificado HTTPS é emitido automaticamente no primeiro acesso (precisa só
   do pré-requisito acima; não depende do fix de TUN).
 
-## Passo 1 — HTTPS no NAS (SSH no `hamsa-usa`)
+## Passo 1 — HTTPS no NAS (SSH no `hamsa-usa`) ✅ FEITO em 2026-07-02
+
+Executado como `Hamsa_Group@Hamsa_USA` (Tailscale 1.98.2). `serve status` confirma
+os 5 proxies ativos (443→4000, 8443→3001, 10000→9292, 10001→9191, 10002→8080).
+Falta só o Sales Pipeline (porta a confirmar). Comandos usados:
 
 ```bash
 TS=/var/packages/Tailscale/target/bin/tailscale
