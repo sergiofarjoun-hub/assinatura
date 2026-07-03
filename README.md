@@ -87,16 +87,18 @@ No Chrome desktop:
 2. DevTools (F12) → **Application → Manifest**: name, ícones carregando, sem erros.
 3. **Lighthouse → PWA** → "Installable" ✓ (rode em cada app no seu scope real).
 
-## O que falta (rodar no NAS/Mac, com OK do Sergio) → ver DEPLOY.md
+## Checklist final — tudo concluído ✅
 
-- [x] **Fase 1 — Descoberta:** feito. Cenário B — cada app numa porta no NAS
-      `100.94.13.31` (Command Center 4000, Renovações 3001, Claims 9292,
-      Multi Cálculo 9191, Multi Apólices 8080; Sales Pipeline: porta a confirmar).
-- [ ] **Pré-req tailnet:** HTTPS Certificates + MagicDNS habilitados.
-- [ ] **Passo 0 — Teste de subpath** (DEPLOY.md): 1 comando `tailscale serve` no
-      NAS pra decidir se os apps rodam em `/claims` etc. sem ajuste de base path.
-- [ ] **Passo 1 — HTTPS pra todos:** `tailscale serve --set-path` por app (DEPLOY.md).
-- [ ] **Passo 2 — Deploy (1× só, com backup):** copiar `icons/` + `manifest.webmanifest`
-      pra cada app e colar o `<head>`. **1 falha → PARAR.**
-- [ ] **Passo 3 — Verificar:** `curl -sI https://hamsa-usa.taild4370d.ts.net/claims/manifest.webmanifest`.
-- [ ] **Passo 4 — Android:** abrir cada path no Chrome (Tailscale ligado) → Instalar app.
+- [x] **Fase 1 — Descoberta:** cada app é um container Docker numa porta própria
+      no NAS `hamsa-usa` (100.94.13.31). Cenário B.
+- [x] **Pré-req tailnet:** HTTPS Certificates + MagicDNS habilitados.
+- [x] **Fase 2 — HTTPS:** `tailscale serve --bg --https=<porta>` por app
+      (1 origem HTTPS por app, na raiz — sem risco de subpath). Persiste após reboot.
+- [x] **Fase A:** ícones 2026 nos 3 apps que já tinham PWA (CC, MC, MA).
+- [x] **Fase B1:** ícones do CRM/Pipeline em `static/img`.
+- [x] **Fase B2:** manifest + rota estática + `<head>` em Renovações e Claims
+      (Claims com rebuild do container). Sintaxe validada antes de cada restart.
+- [x] **Verificação:** `/`, `/manifest.json` e `/icon-192.png` → HTTP 200 nos 6.
+- [x] **Backups:** todo arquivo alterado tem `.bak.<timestamp>` ao lado.
+- [ ] **Android:** instalar os 6 pelo Chrome (⋮ → Instalar app) — endereços em
+      [`DEPLOY.md`](DEPLOY.md).
