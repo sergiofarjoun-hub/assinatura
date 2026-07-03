@@ -4,10 +4,15 @@ Artefatos **prontos para deploy** que dão identidade PWA (ícone standalone na 
 do Android, sem barra do navegador) aos apps Hamsa. Produzidos a partir do símbolo
 **2026** `hamsa_simbolo_2026.png` (hamsa dourado 3D, fundo transparente).
 
-> ⚠️ **Estes arquivos são a Fase 3 do runbook.** As fases que tocam o NAS/Tailscale
-> (Fase 1 — descoberta, Fase 2 — `tailscale serve`, Fase 5 — deploy) **não foram
-> executadas aqui** e exigem rodar no Mac com acesso à tailnet + **autorização
-> explícita do Sergio**. Veja "O que falta" abaixo.
+> ✅ **PROJETO CONCLUÍDO em 2026-07-03.** Os 6 apps (Command Center, Renovações,
+> Claims, Sales Pipeline, Multi Cálculo, Multi Apólices) estão instaláveis como
+> PWA no Android, com o ícone 2026, servidos em HTTPS pelo NAS `hamsa-usa` via
+> `tailscale serve`. O passo-a-passo executado, o mapa de portas e os scripts
+> estão em [`DEPLOY.md`](DEPLOY.md) e [`nas/`](nas/).
+>
+> Nota: os `manifests/*.webmanifest` deste repo foram o plano inicial; no deploy
+> real, 4 apps já tinham manifest próprio (só trocamos os ícones) e Renovações/
+> Claims ganharam `manifest.json` gerado pelos scripts em `nas/`.
 
 ## O que tem aqui
 
