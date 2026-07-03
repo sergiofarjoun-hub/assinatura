@@ -78,7 +78,25 @@ Todos os apps são containers Docker no `hamsa-usa`:
 Outros (fora de escopo por ora): `hamsa-cotacao-nacional`:9192, `mc-usa`:11000,
 `multi-apolices-travel`:8083, `hamsa-apoio`:8090, `docuseal`:3010.
 
-## Passo 2 — Manifest + ícones em cada app (no NAS, com backup)
+## Status final — ✅ CONCLUÍDO em 2026-07-03
+
+Os 6 apps estão instaláveis como PWA com o ícone 2026:
+
+| App | Endereço | Como foi feito |
+|-----|----------|----------------|
+| Command Center | `https://hamsa-usa.taild4370d.ts.net/` | Fase A: troca de ícones (PWA já existia) |
+| Renovações | `https://hamsa-usa.taild4370d.ts.net:8443/` | Fase B2: manifest + rota no server.py + head |
+| Claims | `https://hamsa-usa.taild4370d.ts.net:10000/` | Fase B2: idem + rebuild do container |
+| Multi Cálculo | `https://hamsa-usa.taild4370d.ts.net:10001/` | Fase A: troca de ícones |
+| Multi Apólices | `https://hamsa-usa.taild4370d.ts.net:10002/` | Fase A: troca de ícones |
+| Sales Pipeline | `https://hamsa-usa.taild4370d.ts.net:10003/` | Fase B1: troca de ícones em static/img |
+
+Scripts usados (nesta ordem): `nas/update-icons.sh` → `nas/fase-b-crm.sh` →
+`nas/inspect-b2.sh` → `nas/fase-b2-renovacoes-claims.sh`. Todos com backup
+datado (`*.bak.AAAAMMDD_HHMMSS`) ao lado dos arquivos alterados; validação de
+sintaxe antes de qualquer restart; todos os checks locais retornaram HTTP 200.
+
+## Passo 2 (histórico) — Manifest + ícones em cada app (no NAS, com backup)
 
 Para cada app, no diretório servido (raiz dos arquivos web / `public/`):
 
