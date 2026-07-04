@@ -78,6 +78,30 @@ Todos os apps são containers Docker no `hamsa-usa`:
 Outros (fora de escopo por ora): `hamsa-cotacao-nacional`:9192, `mc-usa`:11000,
 `multi-apolices-travel`:8083, `hamsa-apoio`:8090, `docuseal`:3010.
 
+## ⚠️ Descoberta no Android (2026-07-03, pós-deploy)
+
+**O Android ignora o número da porta ao associar páginas a apps instalados.**
+Consequência: os 6 PWAs (mesmo hostname, portas diferentes) são tratados como
+UM site — só é possível ter **1 app instalado por vez** do
+`hamsa-usa.taild4370d.ts.net`. Instalado um, o Chrome esconde "Instalar app"
+dos demais e mostra "Abrir <app instalado>". (No desktop, os 6 instalam
+normalmente — a limitação é do Android/WebAPK.)
+
+**Arranjo final adotado (decisão do Sergio):** 1 app instalado — o
+**Command Center** — que funciona como hub: a barra lateral abre os outros 5
+em tela cheia dentro do próprio app (a mesma "confusão" de porta joga a favor
+aqui). Os 6 continuam servidos em HTTPS e acessíveis individualmente por URL
+em qualquer navegador/desktop.
+
+**Se um dia quiserem ícones individuais de verdade no Android:** exige migrar
+de portas para caminhos (`/renovacoes/` etc.) com scopes por path — o padrão
+multi-PWA documentado — o que implica suportar subpath em cada um dos 6
+servidores custom. Projeto grande; avaliado e adiado.
+
+**Alternativa leve (não implementada):** shortcuts no manifest do Command
+Center (segurar o ícone → atalhos por app, arrastáveis pra home), com rotas
+de redirect same-origin no server do CC. ~4 atalhos no Android.
+
 ## Status final — ✅ CONCLUÍDO em 2026-07-03
 
 Os 6 apps estão instaláveis como PWA com o ícone 2026:
