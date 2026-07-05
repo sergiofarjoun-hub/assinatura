@@ -1,0 +1,47 @@
+// Configuração via variáveis de ambiente (ver .env.example)
+'use strict';
+
+function parseNumbers(raw) {
+  return (raw || '')
+    .split(',')
+    .map((s) => s.replace(/\D/g, ''))
+    .filter(Boolean);
+}
+
+const config = {
+  // Claude
+  model: process.env.AGENT_MODEL || 'claude-opus-4-8',
+  effort: process.env.AGENT_EFFORT || 'medium', // low | medium | high
+  maxTokens: parseInt(process.env.MAX_TOKENS || '1024', 10),
+
+  // Identidade
+  botName: process.env.BOT_NAME || 'Assistente Hamsa',
+
+  // Números com acesso de administrador (além do próprio chat "você mesmo").
+  // Formato: só dígitos com DDI, separados por vírgula. Ex.: 5511999999999
+  adminNumbers: parseNumbers(process.env.ADMIN_NUMBERS),
+
+  // Modo de atendimento a clientes:
+  //   all       -> responde qualquer número que mandar mensagem
+  //   allowlist -> responde só ALLOWED_NUMBERS
+  //   off       -> não responde clientes (só modo admin)
+  clientMode: process.env.CLIENT_MODE || 'all',
+  allowedNumbers: parseNumbers(process.env.ALLOWED_NUMBERS),
+
+  // Quando o Sérgio responde um cliente manualmente pelo celular,
+  // o bot pausa naquele chat por este tempo (minutos).
+  handoffPauseMinutes: parseInt(process.env.HANDOFF_PAUSE_MINUTES || '60', 10),
+
+  // Memória de conversa: quantas mensagens manter por chat
+  maxHistory: parseInt(process.env.MAX_HISTORY || '40', 10),
+
+  // Pasta de dados (sessão do WhatsApp + histórico)
+  dataDir: process.env.DATA_DIR || 'data',
+};
+
+if (!process.env.ANTHROPIC_API_KEY) {
+  console.error('ERRO: defina ANTHROPIC_API_KEY no ambiente (.env)');
+  process.exit(1);
+}
+
+module.exports = config;
