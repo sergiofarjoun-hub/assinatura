@@ -3,6 +3,30 @@
 // (qualquer byte alterado invalida o cache de prompt).
 'use strict';
 
+const fs = require('fs');
+const path = require('path');
+
+// Base de conhecimento editável (conhecimento.md na raiz do whatsapp-agent).
+// É lida uma vez na inicialização e anexada aos prompts. Se o arquivo não
+// existir ou estiver vazio, o agente funciona só com as instruções abaixo.
+function loadKnowledge() {
+  try {
+    const file = path.join(__dirname, '..', 'conhecimento.md');
+    const text = fs.readFileSync(file, 'utf8').trim();
+    if (!text) return '';
+    return (
+      '\n\n=== BASE DE CONHECIMENTO DA HAMSA (fonte de verdade) ===\n' +
+      'Use os fatos abaixo para responder. Se algo não estiver aqui nem na ' +
+      'conversa, não invente: diga que vai verificar com o Sérgio.\n\n' +
+      text
+    );
+  } catch {
+    return '';
+  }
+}
+
+const KNOWLEDGE = loadKnowledge();
+
 const CLIENT_PROMPT = `Você é o assistente virtual da Hamsa, corretora de seguros especializada em
 seguro-saúde internacional (IPMI — International Private Medical Insurance) e seguros para
 pessoas e famílias com vida internacional (Brasil ↔ EUA e outros países).
@@ -68,4 +92,7 @@ COMO AJUDAR
 - Pode opinar e recomendar; ele é corretor licenciado e decide o que usar.
 - Responda no idioma em que ele escrever (normalmente português).`;
 
-module.exports = { CLIENT_PROMPT, ADMIN_PROMPT };
+module.exports = {
+  CLIENT_PROMPT: CLIENT_PROMPT + KNOWLEDGE,
+  ADMIN_PROMPT: ADMIN_PROMPT + KNOWLEDGE,
+};
