@@ -6,6 +6,10 @@ services:
     env_file: .env
     volumes:
       - ./data:/app/data
+      # Pasta de clientes do NAS montada no container (leitura/escrita).
+      # Defina CLIENTES_HOST_DIR no .env com o caminho REAL no NAS
+      # (ex.: /volume1/dados/CLIENTES). Dentro do container é sempre /clientes.
+      - ${CLIENTES_HOST_DIR:?defina CLIENTES_HOST_DIR no .env}:/clientes
     logging:
       driver: json-file
       options:
