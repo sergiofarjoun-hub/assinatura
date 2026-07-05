@@ -1,6 +1,11 @@
 // Configuração via variáveis de ambiente (ver .env.example)
 'use strict';
 
+// Carrega o .env quando rodando localmente (npm start). No Docker do NAS as
+// variáveis vêm do env_file do compose, e o .env pode não existir — o dotenv
+// simplesmente ignora nesse caso.
+require('dotenv').config();
+
 function parseNumbers(raw) {
   return (raw || '')
     .split(',')
