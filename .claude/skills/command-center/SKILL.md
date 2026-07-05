@@ -79,10 +79,17 @@ Estrutura da página (mobile-first — Sergio usa PWAs no Android):
 3. **Agenda de hoje** — linha do tempo com horários; destaque o próximo
    compromisso; badge Pessoal/Profissional.
 4. **Semana à frente** — compromissos importantes por dia (agrupados).
-5. **Pendências de e-mail** — remetente, assunto, idade, link
-   `https://mail.google.com/mail/u/0/#inbox/<threadId>`.
-6. **Tarefas & follow-ups** — duas colunas (Profissional | Pessoal), com
-   origem de cada item (reunião, e-mail, Slack).
+5. **Matriz Business** e 6. **Matriz Pessoal** — duas matrizes de Eisenhower
+   (importância × urgência), cada uma em grade 2×2 (1 coluna no mobile):
+   - Q1 `Urgente + Importante` → "Fazer agora" (borda superior vermelha)
+   - Q2 `Importante, não urgente` → "Agendar" (borda dourada)
+   - Q3 `Urgente, menos importante` → "Delegar / despachar rápido" (azul)
+   - Q4 `Nem urgente, nem importante` → "Radar / quando der" (neutra)
+   Distribua nelas TODAS as pendências acionáveis (e-mails, follow-ups,
+   action items), com link do Gmail
+   (`https://mail.google.com/mail/u/0/#inbox/<threadId>`) e idade
+   (ex.: "aguardando desde 10/jun") quando houver. Quadrante vazio ganha
+   texto em itálico (ex.: "Sem itens no radar — bom sinal"), não lista.
 7. **Rodapé** — fontes consultadas, integrações indisponíveis, e nota "gerado
    por /command-center".
 
