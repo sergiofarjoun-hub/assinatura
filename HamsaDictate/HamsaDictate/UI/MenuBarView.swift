@@ -9,7 +9,7 @@ struct MenuBarView: View {
             HStack(spacing: 8) {
                 Image(systemName: controller.status.symbolName)
                     .foregroundStyle(statusColor)
-                Text(controller.status.label)
+                Text(statusLine)
                     .font(.callout)
                     .lineLimit(2)
             }
@@ -21,31 +21,46 @@ struct MenuBarView: View {
 
             if !controller.history.isEmpty {
                 Divider()
-                Text("Últimas transcrições")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                ForEach(controller.history) { item in
-                    Button {
-                        controller.copyToClipboard(item.text)
-                    } label: {
-                        HStack {
-                            Text(item.text)
-                                .lineLimit(2)
-                                .truncationMode(.tail)
-                            Spacer()
-                            Image(systemName: "doc.on.doc")
-                                .foregroundStyle(.secondary)
-                        }
+                HStack {
+                    Text("Últimas transcrições")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Button("Limpar") {
+                        controller.clearHistory()
                     }
                     .buttonStyle(.plain)
-                    .help("Copiar para o clipboard")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
                 }
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 6) {
+                        ForEach(controller.history) { item in
+                            Button {
+                                controller.copyToClipboard(item.text)
+                            } label: {
+                                HStack {
+                                    Text(item.text)
+                                        .lineLimit(2)
+                                        .truncationMode(.tail)
+                                    Spacer()
+                                    Image(systemName: "doc.on.doc")
+                                        .foregroundStyle(.secondary)
+                                }
+                                .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            .help("Copiar para o clipboard")
+                        }
+                    }
+                }
+                .frame(maxHeight: 220)
             }
 
             Divider()
 
-            Button("Permissões e configuração…") {
-                controller.showOnboarding()
+            Button("Configurações…") {
+                controller.showSettings()
             }
 
             Button("Sair do HamsaDictate") {
@@ -54,6 +69,21 @@ struct MenuBarView: View {
         }
         .padding(12)
         .frame(width: 300)
+    }
+
+    private var statusLine: String {
+        if controller.status == .idle {
+            let preset = HotkeyPreset(rawValue: controller.settings.hotkeyPresetRaw) ?? .default
+            switch controller.settings.dictationMode {
+            case .pushToTalk:
+                return "Pronto — segure \(preset.label) para ditar"
+            case .toggle:
+                return "Pronto — toque \(preset.label) para gravar/parar"
+            case .tapOrHold:
+                return "Pronto — toque ou segure \(preset.label)"
+            }
+        }
+        return controller.status.label
     }
 
     private var statusColor: Color {

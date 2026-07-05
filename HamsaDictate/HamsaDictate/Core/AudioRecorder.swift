@@ -1,3 +1,4 @@
+import AudioToolbox
 import AVFoundation
 import Foundation
 
@@ -15,8 +16,9 @@ enum AudioRecorderError: LocalizedError {
     }
 }
 
-/// Grava do input padrão do sistema (AVAudioEngine) e acumula amostras
-/// já convertidas para 16 kHz mono Float32 — o formato nativo do Whisper.
+/// Grava do input escolhido (ou padrão do sistema) via AVAudioEngine e
+/// acumula amostras já convertidas para 16 kHz mono Float32 — o formato
+/// nativo do Whisper.
 final class AudioRecorder {
     static let targetSampleRate: Double = 16_000
 
@@ -36,10 +38,15 @@ final class AudioRecorder {
     private(set) var isRecording = false
 
     var maxDuration: TimeInterval = 120
+    /// UID CoreAudio do dispositivo preferido; nil/vazio = padrão do sistema.
+    /// Aplicado no próximo `start()`.
+    var preferredDeviceUID: String?
     /// Chamado (na main queue, uma única vez por gravação) ao atingir o limite.
     var onMaxDurationReached: (() -> Void)?
     /// Chamado (na main queue) quando o device de entrada muda no meio da gravação.
     var onConfigurationChange: (() -> Void)?
+    /// Nível RMS (0…1) de cada buffer convertido, na main queue — alimenta o waveform.
+    var onLevel: ((Float) -> Void)?
 
     init() {
         NotificationCenter.default.addObserver(
@@ -54,6 +61,8 @@ final class AudioRecorder {
 
     func start() throws {
         guard !isRecording else { return }
+
+        applyPreferredDeviceIfNeeded()
 
         let input = engine.inputNode
         let inputFormat = input.outputFormat(forBus: 0)
@@ -110,6 +119,25 @@ final class AudioRecorder {
         isRecording = false
     }
 
+    /// Redireciona o inputNode para o device escolhido nas Settings.
+    /// Falha silenciosa = permanece no padrão do sistema (ex.: device desconectado).
+    private func applyPreferredDeviceIfNeeded() {
+        guard let uid = preferredDeviceUID, !uid.isEmpty,
+              let resolvedID = AudioDeviceManager.deviceID(forUID: uid),
+              let audioUnit = engine.inputNode.audioUnit
+        else { return }
+
+        var deviceID = resolvedID
+        AudioUnitSetProperty(
+            audioUnit,
+            kAudioOutputUnitProperty_CurrentDevice,
+            kAudioUnitScope_Global,
+            0,
+            &deviceID,
+            UInt32(MemoryLayout<AudioDeviceID>.size)
+        )
+    }
+
     private func append(_ buffer: AVAudioPCMBuffer) {
         guard let converter else { return }
 
@@ -132,7 +160,18 @@ final class AudioRecorder {
         }
 
         guard conversionError == nil, let channel = output.floatChannelData?[0] else { return }
-        samples.append(contentsOf: UnsafeBufferPointer(start: channel, count: Int(output.frameLength)))
+        let frameCount = Int(output.frameLength)
+        samples.append(contentsOf: UnsafeBufferPointer(start: channel, count: frameCount))
+
+        if let onLevel, frameCount > 0 {
+            var sumOfSquares: Float = 0
+            for index in 0..<frameCount {
+                let sample = channel[index]
+                sumOfSquares += sample * sample
+            }
+            let rms = (sumOfSquares / Float(frameCount)).squareRoot()
+            DispatchQueue.main.async { onLevel(rms) }
+        }
 
         if !maxDurationNotified,
            Double(samples.count) / Self.targetSampleRate >= maxDuration {
