@@ -1,5 +1,12 @@
 # PWA assets — ícones na Home para os apps Hamsa
 
+> 📐 **Sistema da corretora:** a visão geral dos módulos está em
+> [`ARQUITETURA.md`](ARQUITETURA.md). Cada módulo tem desenho + `schema.sql`
+> validado: [`comissoes/`](comissoes/) · [`cadastro/`](cadastro/) ·
+> [`comunicacao/`](comunicacao/) · [`propostas/`](propostas/) ·
+> [`renovacoes/`](renovacoes/) · [`portal/`](portal/). Fase 0 (Postgres no
+> NAS): `nas/comissoes-fase0.sh`.
+
 > 🆕 **Novo módulo:** [`whatsapp-agent/`](whatsapp-agent/) — agente de IA (Claude)
 > para o WhatsApp da Hamsa: assistente pessoal no chat "você mesmo" + atendimento
 > a clientes com handoff humano. Deploy em Docker no NAS. Ver
