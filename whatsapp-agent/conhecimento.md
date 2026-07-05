@@ -11,7 +11,8 @@
 
 ## Sobre a Hamsa
 - Corretora: [nome completo / razão social]
-- Corretor responsável: Sérgio [sobrenome], licenciado [nº/UF ou estado dos EUA]
+- Atendimento humano: Concierge da Hamsa / Equipe Hamsa Group (o agente NUNCA
+  cita nomes de pessoas ao cliente; sempre "o Concierge da Hamsa").
 - Atuação: seguro-saúde internacional (IPMI) para pessoas e famílias com vida
   entre [Brasil e EUA / outros].
 - Idiomas de atendimento: português, inglês, [espanhol/hebraico].
@@ -40,7 +41,7 @@
 1. Coletamos: nome, idade de cada pessoa, país/cidade de residência, países onde
    precisa de cobertura, se precisa de cobertura nos EUA, condições de saúde
    relevantes.
-2. [ex.: O Sérgio prepara comparativo com 2–3 seguradoras.]
+2. [ex.: O Concierge da Hamsa prepara comparativo com 2–3 seguradoras.]
 3. [ex.: Retorno em até X dias úteis.]
 4. [ex.: Contratação 100% online / assinatura digital.]
 
@@ -52,7 +53,7 @@
 - **Como funciona reembolso / sinistro?** [sua resposta em termos gerais]
 - **Posso usar no Brasil e nos EUA?** [sua resposta]
 - **Quanto custa?** Não informamos valores pelo agente; depende de idade, país e
-  cobertura — o Sérgio prepara a cotação. [ajuste se quiser]
+  cobertura — o Concierge da Hamsa prepara a cotação. [ajuste se quiser]
 
 ## O que o agente NUNCA deve fazer
 > Reforça as regras. Acrescente o que for específico do seu negócio.
@@ -62,7 +63,7 @@
 - [outras regras suas]
 
 ## Contatos e encaminhamento
-- Quando escalar para o Sérgio: [ex.: sinistro, emergência, cancelamento,
-  cliente irritado, pedido explícito de humano].
+- Quando escalar para o Concierge da Hamsa: [ex.: sinistro, emergência,
+  cancelamento, cliente irritado, pedido explícito de humano].
 - Em emergência médica: orientar o serviço de emergência local e o telefone 24h
   da seguradora no cartão da apólice.

@@ -9,17 +9,40 @@ const client = new Anthropic(); // lê ANTHROPIC_API_KEY do ambiente
 
 const FALLBACK_CLIENT =
   'Peço desculpas, não foi possível processar sua mensagem neste momento. ' +
-  'O Sérgio entrará em contato pessoalmente em breve. Agradeço a compreensão.';
+  'O Concierge da Hamsa entrará em contato em breve. Agradeço a compreensão.';
 const FALLBACK_ADMIN = '⚠️ Não consegui gerar resposta (veja os logs do agente).';
 
 /**
  * Gera a resposta do agente para um chat.
  * @param {Array<{role: 'user'|'assistant', content: string}>} history histórico (termina em user)
  * @param {boolean} admin true = modo assistente pessoal, false = modo cliente
+ * @param {{kind:'image'|'pdf', mediaType:string, dataB64:string}|null} [media] anexo da última mensagem
  * @returns {Promise<string>} texto da resposta
  */
-async function generateReply(history, admin) {
+async function generateReply(history, admin, media) {
   const systemPrompt = admin ? ADMIN_PROMPT : CLIENT_PROMPT;
+
+  // Se a última mensagem trouxe imagem/PDF, transforma o conteúdo do último
+  // turno num array de blocos (mídia + texto) para o Claude analisar o arquivo.
+  let messages = history;
+  if (media && history.length) {
+    const last = history[history.length - 1];
+    const mediaBlock =
+      media.kind === 'pdf'
+        ? {
+            type: 'document',
+            source: { type: 'base64', media_type: 'application/pdf', data: media.dataB64 },
+          }
+        : {
+            type: 'image',
+            source: { type: 'base64', media_type: media.mediaType, data: media.dataB64 },
+          };
+    messages = history.slice(0, -1).concat({
+      role: 'user',
+      content: [mediaBlock, { type: 'text', text: last.content }],
+    });
+  }
+
   try {
     const response = await client.messages.create({
       model: config.model,
@@ -33,7 +56,7 @@ async function generateReply(history, admin) {
           cache_control: { type: 'ephemeral' },
         },
       ],
-      messages: history,
+      messages,
     });
 
     if (response.stop_reason === 'refusal') {

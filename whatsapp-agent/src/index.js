@@ -24,6 +24,7 @@ const path = require('path');
 const config = require('./config');
 const store = require('./store');
 const { generateReply } = require('./agent');
+const media = require('./media');
 
 const logger = pino({ level: process.env.LOG_LEVEL || 'warn' });
 
@@ -131,13 +132,39 @@ async function handleCommand(sock, jid, text) {
 
 // ---------- resposta com IA ----------
 
-async function respond(sock, jid, text, admin) {
-  store.pushMessage(jid, 'user', text);
+async function respond(sock, jid, text, admin, msg) {
+  // Se veio imagem/PDF, baixa para o agente analisar o documento.
+  let attachment = null;
+  if (msg && media.detectMedia(msg)) {
+    try {
+      attachment = await media.download(sock, msg, logger);
+    } catch (err) {
+      if (err.tooLarge) {
+        return sendText(
+          sock,
+          jid,
+          'O arquivo enviado é muito grande para eu analisar. Por gentileza, ' +
+            'reenvie uma versão menor ou uma foto mais nítida do documento.'
+        );
+      }
+      console.error(`Falha ao baixar mídia de ${numberOf(jid)}:`, err.message);
+      // segue sem o anexo (responde ao texto/legenda, se houver)
+    }
+  }
+
+  // Texto guardado no histórico: legenda, ou uma nota indicando o anexo.
+  let stored = text;
+  if (attachment && !stored) {
+    stored = attachment.kind === 'pdf' ? '(enviou um documento PDF)' : '(enviou uma imagem)';
+  }
+  if (!stored) return; // nada de útil (ex.: áudio/figurinha sem legenda)
+
+  store.pushMessage(jid, 'user', stored);
 
   await sock.presenceSubscribe(jid).catch(() => {});
   await sock.sendPresenceUpdate('composing', jid).catch(() => {});
 
-  const reply = await generateReply(store.history(jid), admin);
+  const reply = await generateReply(store.history(jid), admin, attachment);
 
   await sock.sendPresenceUpdate('paused', jid).catch(() => {});
   await sendText(sock, jid, reply);
@@ -193,18 +220,21 @@ async function start() {
       if (jid === 'status@broadcast' || jid.endsWith('@g.us') || jid.endsWith('@broadcast')) continue;
 
       const text = extractText(msg);
+      const hasMedia = !!media.detectMedia(msg);
 
       if (msg.key.fromMe) {
         if (sentByBot.has(msg.key.id)) continue; // mensagem do próprio bot
 
         if (jid === selfJid) {
           // chat "você mesmo" = console do admin
-          if (!text) continue;
+          if (!text && !hasMedia) continue;
           enqueue(jid, () =>
-            text.startsWith('!') ? handleCommand(sock, jid, text) : respond(sock, jid, text, true)
+            text.startsWith('!')
+              ? handleCommand(sock, jid, text)
+              : respond(sock, jid, text, true, msg)
           );
         } else if (config.handoffPauseMinutes > 0) {
-          // Sérgio respondeu um cliente manualmente -> bot sai de cena
+          // resposta manual do dono a um cliente -> bot sai de cena
           store.pauseChat(jid, config.handoffPauseMinutes);
           console.log(
             `Handoff: resposta manual em ${numberOf(jid)} — bot pausado por ${config.handoffPauseMinutes} min.`
@@ -217,11 +247,13 @@ async function start() {
       const sender = numberOf(jid);
       const isAdmin = config.adminNumbers.includes(sender);
 
-      if (!text) continue; // áudio/imagem/figurinha sem legenda: ignora
+      if (!text && !hasMedia) continue; // áudio/figurinha sem legenda: ignora
 
       if (isAdmin) {
         enqueue(jid, () =>
-          text.startsWith('!') ? handleCommand(sock, jid, text) : respond(sock, jid, text, true)
+          text.startsWith('!')
+            ? handleCommand(sock, jid, text)
+            : respond(sock, jid, text, true, msg)
         );
         continue;
       }
@@ -231,7 +263,7 @@ async function start() {
       if (config.clientMode === 'allowlist' && !config.allowedNumbers.includes(sender)) continue;
       if (store.isPaused(jid)) continue;
 
-      enqueue(jid, () => respond(sock, jid, text, false));
+      enqueue(jid, () => respond(sock, jid, text, false, msg));
     }
   });
 }
