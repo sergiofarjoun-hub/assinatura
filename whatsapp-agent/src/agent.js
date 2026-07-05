@@ -89,4 +89,53 @@ async function generateReply(history, admin, media) {
   }
 }
 
-module.exports = { generateReply };
+// Extrai nome do cliente e número da apólice da conversa, se mencionados.
+// Chamada leve e barata; retorna { nome, apolice } com strings vazias quando
+// não encontrado. Nunca lança — em erro devolve {}.
+async function extractIdentity(history) {
+  const convo = history
+    .map((m) => `${m.role === 'user' ? 'Cliente' : 'Atendente'}: ${m.content}`)
+    .join('\n')
+    .slice(-4000);
+  try {
+    const response = await client.messages.create({
+      model: config.model,
+      max_tokens: 200,
+      output_config: {
+        format: {
+          type: 'json_schema',
+          schema: {
+            type: 'object',
+            properties: {
+              nome: { type: 'string', description: 'Nome do cliente, ou "" se não informado' },
+              apolice: {
+                type: 'string',
+                description: 'Número da apólice, ou "" se não informado',
+              },
+            },
+            required: ['nome', 'apolice'],
+            additionalProperties: false,
+          },
+        },
+      },
+      messages: [
+        {
+          role: 'user',
+          content:
+            'Extraia o NOME do cliente e o NÚMERO DA APÓLICE mencionados nesta ' +
+            'conversa de atendimento. Se algum não estiver presente, devolva "" ' +
+            '(string vazia). Não invente.\n\n' +
+            convo,
+        },
+      ],
+    });
+    const text = response.content.find((b) => b.type === 'text')?.text || '{}';
+    const data = JSON.parse(text);
+    return { nome: (data.nome || '').trim(), apolice: (data.apolice || '').trim() };
+  } catch (err) {
+    console.error('Falha ao extrair identidade do cliente:', err.message);
+    return {};
+  }
+}
+
+module.exports = { generateReply, extractIdentity };

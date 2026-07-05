@@ -45,6 +45,18 @@
 3. [ex.: Retorno em até X dias úteis.]
 4. [ex.: Contratação 100% online / assinatura digital.]
 
+## Documentos por tipo de solicitação (menu)
+> O agente já pede o básico. Ajuste/complete aqui a lista EXATA de cada fluxo.
+- **1) Reembolso:** pedido médico + nota fiscal/recibo + (em exames) o
+  motivo/diagnóstico. [acrescente: formulário da seguradora, dados bancários,
+  prazo de envio, formato aceito...]
+- **2) Autorização de exames:** pedido médico com indicação clínica
+  (motivo/diagnóstico), nome e local do exame, data prevista. [acrescente o que
+  cada seguradora exige]
+- **3) Internação – GOP (Garantia de Pagamento):** hospital/clínica, data
+  prevista, relatório/pedido médico com diagnóstico e procedimento, contato.
+  [acrescente prazos e canal de emissão da GOP]
+
 ## Perguntas frequentes (com a resposta que queremos dar)
 > Estas são as respostas "oficiais". O agente vai priorizar o que estiver aqui.
 - **Vocês cobrem nos EUA?** [sua resposta]

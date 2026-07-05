@@ -8,7 +8,7 @@ const config = require('./config');
 
 const FILE = path.join(config.dataDir, 'state.json');
 
-let state = { conversations: {}, paused: {} };
+let state = { conversations: {}, paused: {}, profiles: {} };
 let saveTimer = null;
 
 function load() {
@@ -16,8 +16,9 @@ function load() {
     state = JSON.parse(fs.readFileSync(FILE, 'utf8'));
     state.conversations = state.conversations || {};
     state.paused = state.paused || {};
+    state.profiles = state.profiles || {};
   } catch {
-    state = { conversations: {}, paused: {} };
+    state = { conversations: {}, paused: {}, profiles: {} };
   }
 }
 
@@ -82,6 +83,19 @@ function conversationCount() {
   return Object.keys(state.conversations).length;
 }
 
+// Perfil do cliente por chat: { nome, apolice }. Usado para achar a pasta na rede.
+function getProfile(jid) {
+  return state.profiles[jid] || {};
+}
+
+function setProfile(jid, patch) {
+  const cur = state.profiles[jid] || (state.profiles[jid] = {});
+  if (patch.nome) cur.nome = patch.nome;
+  if (patch.apolice) cur.apolice = patch.apolice;
+  save();
+  return cur;
+}
+
 load();
 
 module.exports = {
@@ -93,4 +107,6 @@ module.exports = {
   isPaused,
   pausedChats,
   conversationCount,
+  getProfile,
+  setProfile,
 };

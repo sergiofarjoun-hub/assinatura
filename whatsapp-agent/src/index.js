@@ -23,8 +23,9 @@ const path = require('path');
 
 const config = require('./config');
 const store = require('./store');
-const { generateReply } = require('./agent');
+const { generateReply, extractIdentity } = require('./agent');
 const media = require('./media');
+const clientes = require('./clientes');
 
 const logger = pino({ level: process.env.LOG_LEVEL || 'warn' });
 
@@ -161,14 +162,68 @@ async function respond(sock, jid, text, admin, msg) {
 
   store.pushMessage(jid, 'user', stored);
 
+  // Identificação do cliente + salvamento de documentos (só no modo cliente,
+  // e só se a pasta de clientes existir).
+  if (!admin && clientes.enabled()) {
+    const profile = store.getProfile(jid);
+    if (!profile.nome) {
+      const found = await extractIdentity(store.history(jid));
+      if (found.nome || found.apolice) store.setProfile(jid, found);
+    }
+    if (attachment) {
+      const saved = clientes.saveDocument(store.getProfile(jid), attachment, numberOf(jid));
+      if (saved && saved.identified) {
+        console.log(`Documento salvo: ${saved.path}`);
+      } else if (saved) {
+        console.log(`Documento NÃO identificado salvo em retenção: ${saved.path}`);
+        await notifyOwner(
+          sock,
+          `📎 Documento recebido de ${numberOf(jid)}, mas o cliente ainda NÃO foi ` +
+            `identificado (nome/apólice). Salvo em retenção "_a_identificar". ` +
+            `Favor conferir e arquivar na pasta correta.`
+        ).catch(() => {});
+      }
+    }
+  }
+
   await sock.presenceSubscribe(jid).catch(() => {});
   await sock.sendPresenceUpdate('composing', jid).catch(() => {});
 
-  const reply = await generateReply(store.history(jid), admin, attachment);
+  const raw = await generateReply(store.history(jid), admin, attachment);
+
+  // Handoff para humano: o agente marca [[HANDOFF]] quando o cliente pede o
+  // Concierge. Removemos a etiqueta, pausamos o bot no chat e avisamos o dono.
+  const wantsConcierge = !admin && raw.includes('[[HANDOFF]]');
+  const reply = raw.replace(/\s*\[\[HANDOFF\]\]\s*/g, '').trim();
 
   await sock.sendPresenceUpdate('paused', jid).catch(() => {});
   await sendText(sock, jid, reply);
   store.pushMessage(jid, 'assistant', reply);
+
+  if (wantsConcierge) {
+    const mins = Math.max(config.handoffPauseMinutes, 120);
+    store.pauseChat(jid, mins);
+    const prof = store.getProfile(jid);
+    const quem = prof.nome ? `${prof.nome} (${numberOf(jid)})` : numberOf(jid);
+    console.log(`Handoff pedido por ${quem}: bot pausado por ${mins} min.`);
+    await notifyOwner(
+      sock,
+      `🔔 *Concierge solicitado*\nCliente: ${quem}` +
+        (prof.apolice ? `\nApólice: ${prof.apolice}` : '') +
+        `\nO bot foi pausado nesse chat por ${mins} min. Assuma a conversa quando puder.`
+    ).catch((e) => console.error('Falha ao notificar dono:', e.message));
+  }
+}
+
+// Envia um aviso ao dono (chat "você mesmo" e/ou números ADMIN configurados).
+async function notifyOwner(sock, text) {
+  const selfJid = jidNormalizedUser(sock.user?.id || '');
+  const targets = new Set();
+  if (selfJid) targets.add(selfJid);
+  for (const n of config.adminNumbers) targets.add(`${n}@s.whatsapp.net`);
+  for (const t of targets) {
+    await sendText(sock, t, text).catch(() => {});
+  }
 }
 
 // ---------- loop principal ----------
