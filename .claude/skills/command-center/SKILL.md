@@ -69,8 +69,12 @@ reutilize o mesmo caminho de arquivo para manter a URL).
 
 Estrutura da página (mobile-first — Sergio usa PWAs no Android):
 
-1. **Cabeçalho**: "Command Center — Hamsa", data por extenso em pt-BR, hora da
-   geração.
+1. **Cabeçalho**: logo da Hamsa + "Command Center — Hamsa", data por extenso
+   em pt-BR, hora da geração. O logo é obrigatório: use o símbolo 2026 com
+   fundo transparente (`hamsa_simbolo_2026.png` na raiz deste repo), reduzido
+   para ~220px com Pillow (`pip install pillow`) e embutido como data URI
+   base64 (`data:image/png;base64,...`) — o Artifact não pode referenciar
+   imagens externas. Altura de exibição ~52px, à esquerda do título.
 2. **Top 3 urgências do dia** — cartões em destaque (dourado).
 3. **Agenda de hoje** — linha do tempo com horários; destaque o próximo
    compromisso; badge Pessoal/Profissional.
