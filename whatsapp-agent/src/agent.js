@@ -112,8 +112,13 @@ async function extractIdentity(history) {
                 type: 'string',
                 description: 'Número da apólice, ou "" se não informado',
               },
+              operadora: {
+                type: 'string',
+                description:
+                  'Operadora/seguradora citada (ex.: VUMI, Cigna, Allianz, Bupa), ou "" se não informado',
+              },
             },
-            required: ['nome', 'apolice'],
+            required: ['nome', 'apolice', 'operadora'],
             additionalProperties: false,
           },
         },
@@ -131,7 +136,11 @@ async function extractIdentity(history) {
     });
     const text = response.content.find((b) => b.type === 'text')?.text || '{}';
     const data = JSON.parse(text);
-    return { nome: (data.nome || '').trim(), apolice: (data.apolice || '').trim() };
+    return {
+      nome: (data.nome || '').trim(),
+      apolice: (data.apolice || '').trim(),
+      operadora: (data.operadora || '').trim(),
+    };
   } catch (err) {
     console.error('Falha ao extrair identidade do cliente:', err.message);
     return {};

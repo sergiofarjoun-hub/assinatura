@@ -9,7 +9,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const BASE = process.env.CLIENTES_DIR || '/Users/hamsa/server/clientes';
+const BASE = process.env.CLIENTES_DIR || '/Users/hamsa/SERVER/CLIENTES';
 const SUBFOLDER = process.env.CLIENTES_SUBPASTA || 'reembolsos';
 
 let warned = false;
@@ -48,51 +48,83 @@ function sanitize(s) {
     .slice(0, 80);
 }
 
-function listFolders() {
+function subdirs(dir) {
   try {
-    return fs
-      .readdirSync(BASE, { withFileTypes: true })
-      .filter((d) => d.isDirectory())
-      .map((d) => d.name);
+    return fs.readdirSync(dir, { withFileTypes: true }).filter((d) => d.isDirectory());
   } catch {
     return [];
   }
 }
 
-// Encontra a pasta EXISTENTE do cliente por número de apólice ou nome.
-// NUNCA cria pasta de cliente. Só retorna quando o match é ÚNICO e seguro
-// (evita salvar no cliente errado). Retorna o caminho absoluto ou null.
-function resolveFolder({ nome, apolice }) {
-  if (!enabled()) return null;
-  const folders = listFolders();
+// Coleta as pastas de CLIENTE. Estrutura esperada (aninhada):
+//   BASE / <Ramo: Saúde, Vida...> / <Operadora> / <Cliente>
+// Se a estrutura for plana (clientes direto em BASE), usa isso como fallback.
+// Cada candidato: { name, operadora, ramo, path }.
+function collectClients() {
+  const out = [];
+  for (const ramo of subdirs(BASE)) {
+    const ramoPath = path.join(BASE, ramo.name);
+    const ops = subdirs(ramoPath);
+    for (const op of ops) {
+      const opPath = path.join(ramoPath, op.name);
+      for (const cl of subdirs(opPath)) {
+        out.push({ name: cl.name, operadora: op.name, ramo: ramo.name, path: path.join(opPath, cl.name) });
+      }
+    }
+  }
+  if (out.length === 0) {
+    // fallback: estrutura plana (clientes direto na base)
+    for (const d of subdirs(BASE)) {
+      out.push({ name: d.name, operadora: '', ramo: '', path: path.join(BASE, d.name) });
+    }
+  }
+  return out;
+}
 
-  // 1) por número de apólice (mais confiável): dígitos da apólice contidos no
-  //    nome da pasta, e o match tem de ser único.
-  const digits = (apolice || '').replace(/\D/g, '');
-  if (digits.length >= 4) {
-    const hits = folders.filter((f) => f.replace(/\D/g, '').includes(digits));
-    if (hits.length === 1) return path.join(BASE, hits[0]);
+// Encontra a pasta EXISTENTE do cliente por número de apólice ou nome, dentro
+// de Saúde/<Operadora>/. NUNCA cria pasta de cliente. Só retorna quando o match
+// é ÚNICO e seguro (evita salvar no cliente errado). Se a operadora for
+// informada, restringe a busca a ela. Retorna o caminho absoluto ou null.
+function resolveFolder({ nome, apolice, operadora }) {
+  if (!enabled()) return null;
+  let cands = collectClients();
+  if (!cands.length) return null;
+
+  // restringe pela operadora, se informada e se casar com alguma existente
+  const nop = norm(operadora);
+  if (nop) {
+    const f = cands.filter((c) => {
+      const co = norm(c.operadora);
+      return co && (co.includes(nop) || nop.includes(co));
+    });
+    if (f.length) cands = f;
   }
 
-  // 2) por nome: match normalizado exato (único) tem prioridade.
+  // 1) por número de apólice (mais confiável): match único
+  const digits = (apolice || '').replace(/\D/g, '');
+  if (digits.length >= 4) {
+    const hits = cands.filter((c) => c.name.replace(/\D/g, '').includes(digits));
+    if (hits.length === 1) return hits[0].path;
+  }
+
+  // 2) por nome: exato normalizado (único) tem prioridade
   const nnome = norm(nome);
   if (nnome) {
-    const exact = folders.filter((f) => norm(f) === nnome);
-    if (exact.length === 1) return path.join(BASE, exact[0]);
+    const exact = cands.filter((c) => norm(c.name) === nnome);
+    if (exact.length === 1) return exact[0].path;
 
-    // senão, exige pelo menos 2 tokens do nome, todos presentes na pasta,
-    // e resultado único — reduz muito o risco de casar com o cliente errado.
+    // senão, exige >=2 tokens do nome, todos presentes, resultado único
     const toks = nnome.split(' ').filter(Boolean);
     if (toks.length >= 2) {
-      const cand = folders.filter((f) => {
-        const fn = norm(f);
+      const c2 = cands.filter((c) => {
+        const fn = norm(c.name);
         return toks.every((t) => fn.includes(t));
       });
-      if (cand.length === 1) return path.join(BASE, cand[0]);
+      if (c2.length === 1) return c2[0].path;
     }
   }
 
-  return null; // não identificado (0 candidatos) ou ambíguo (vários)
+  return null; // não identificado (0) ou ambíguo (vários)
 }
 
 function extFor(attachment) {

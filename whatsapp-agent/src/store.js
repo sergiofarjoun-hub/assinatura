@@ -92,6 +92,7 @@ function setProfile(jid, patch) {
   const cur = state.profiles[jid] || (state.profiles[jid] = {});
   if (patch.nome) cur.nome = patch.nome;
   if (patch.apolice) cur.apolice = patch.apolice;
+  if (patch.operadora) cur.operadora = patch.operadora;
   save();
   return cur;
 }
