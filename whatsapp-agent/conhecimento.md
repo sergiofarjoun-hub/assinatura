@@ -47,14 +47,15 @@
 
 ## Documentos por tipo de solicitação (menu)
 > O agente já pede o básico. Ajuste/complete aqui a lista EXATA de cada fluxo.
-- **1) Reembolso:** pedido médico + nota fiscal/recibo + (em exames) o
-  motivo/diagnóstico. [acrescente: formulário da seguradora, dados bancários,
-  prazo de envio, formato aceito...]
+- **1) Reembolso:** pedido médico + nota fiscal/recibo + DIAGNÓSTICO (sempre,
+  inclusive em consulta). [acrescente: formulário da seguradora, dados
+  bancários, prazo de envio, formato aceito...]
 - **2) Autorização de exames:** pedido médico com indicação clínica
   (motivo/diagnóstico), nome e local do exame, data prevista. [acrescente o que
   cada seguradora exige]
-- **3) Internação – GOP (Garantia de Pagamento):** hospital/clínica, data
-  prevista, relatório/pedido médico com diagnóstico e procedimento, contato.
+- **3) Internação – GOP (Garantia de Pagamento):** relatório médico contendo
+  (obrigatório): descrição do procedimento, local, data provável e honorários
+  do médico e da equipe de forma aberta e individualizada; + contato do cliente.
   [acrescente prazos e canal de emissão da GOP]
 
 ## Perguntas frequentes (com a resposta que queremos dar)
