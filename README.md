@@ -67,7 +67,7 @@ quiser usá-lo, no **Mac** gere os dois tamanhos e aponte o manifest daquele app
 sips -z 192 192 renovacoes.png --out icons/renovacoes-192.png
 sips -z 512 512 renovacoes.png --out icons/renovacoes-512.png
 # depois, em manifests/renovacoes.webmanifest, troque os "src" de
-# /icons/hamsa-*.png para /icons/renovacoes-*.png
+# ./icons/hamsa-*.png para ./icons/renovacoes-*.png
 ```
 
 (Se o ícone não for quadrado nem tiver zona de segurança, o `purpose:"maskable"`
