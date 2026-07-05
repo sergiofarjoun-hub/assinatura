@@ -8,7 +8,8 @@ const { CLIENT_PROMPT, ADMIN_PROMPT } = require('./prompts');
 const client = new Anthropic(); // lê ANTHROPIC_API_KEY do ambiente
 
 const FALLBACK_CLIENT =
-  'Desculpe, não consegui processar sua mensagem agora. O Sérgio vai te responder pessoalmente em breve. 🙏';
+  'Peço desculpas, não foi possível processar sua mensagem neste momento. ' +
+  'O Sérgio entrará em contato pessoalmente em breve. Agradeço a compreensão.';
 const FALLBACK_ADMIN = '⚠️ Não consegui gerar resposta (veja os logs do agente).';
 
 /**
