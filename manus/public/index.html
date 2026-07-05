@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hamsa Agent</title>
+<style>
+  :root {
+    --navy: #0b1424; --navy-2: #111d33; --navy-3: #1a2942;
+    --gold: #c9a35c; --text: #e8e6e1; --muted: #8b94a7;
+    --ok: #4caf7d; --err: #e06c5e;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body {
+    background: var(--navy); color: var(--text);
+    font: 15px/1.55 -apple-system, "Segoe UI", Roboto, sans-serif;
+    height: 100vh; display: flex; flex-direction: column;
+  }
+  header {
+    padding: 12px 20px; border-bottom: 1px solid var(--navy-3);
+    display: flex; align-items: center; gap: 10px;
+  }
+  header .logo { color: var(--gold); font-size: 20px; }
+  header h1 { font-size: 16px; font-weight: 600; letter-spacing: .04em; }
+  header .status { margin-left: auto; font-size: 12px; color: var(--muted); }
+  main { flex: 1; display: flex; min-height: 0; }
+
+  /* Chat */
+  #chatCol { flex: 3; display: flex; flex-direction: column; min-width: 0; }
+  #chat { flex: 1; overflow-y: auto; padding: 20px; }
+  .msg { max-width: 780px; margin: 0 auto 14px; padding: 12px 16px; border-radius: 12px; white-space: pre-wrap; word-wrap: break-word; }
+  .msg.user { background: var(--navy-3); border: 1px solid #24365a; }
+  .msg.agent { background: var(--navy-2); border: 1px solid var(--navy-3); }
+  .msg.agent .who { color: var(--gold); }
+  .msg .who { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-bottom: 6px; }
+  .msg.thinking { opacity: .55; font-style: italic; font-size: 13px; }
+  .msg.error { border-color: var(--err); color: var(--err); }
+
+  form { display: flex; gap: 10px; padding: 14px 20px; border-top: 1px solid var(--navy-3); }
+  textarea {
+    flex: 1; resize: none; background: var(--navy-2); color: var(--text);
+    border: 1px solid var(--navy-3); border-radius: 10px; padding: 10px 14px;
+    font: inherit; min-height: 46px; max-height: 160px;
+  }
+  textarea:focus { outline: none; border-color: var(--gold); }
+  button {
+    background: var(--gold); color: var(--navy); border: 0; border-radius: 10px;
+    padding: 0 22px; font: inherit; font-weight: 700; cursor: pointer;
+  }
+  button:disabled { opacity: .4; cursor: default; }
+
+  /* Painel de atividade */
+  #activityCol {
+    flex: 2; max-width: 420px; border-left: 1px solid var(--navy-3);
+    display: flex; flex-direction: column; background: #0d1729;
+  }
+  #activityCol h2 {
+    font-size: 12px; text-transform: uppercase; letter-spacing: .1em;
+    color: var(--muted); padding: 12px 16px; border-bottom: 1px solid var(--navy-3);
+  }
+  #activity { flex: 1; overflow-y: auto; padding: 10px 12px; font-size: 12.5px; }
+  .act { margin-bottom: 8px; padding: 8px 10px; border-radius: 8px; background: var(--navy-2); border-left: 3px solid var(--gold); }
+  .act .tname { color: var(--gold); font-weight: 600; }
+  .act pre { white-space: pre-wrap; word-break: break-all; color: var(--muted); margin-top: 4px; max-height: 120px; overflow: hidden; }
+  .act.result { border-left-color: var(--ok); }
+  .act.result.err { border-left-color: var(--err); }
+  #files { border-top: 1px solid var(--navy-3); padding: 10px 16px; font-size: 12.5px; max-height: 30%; overflow-y: auto; }
+  #files a { color: var(--gold); text-decoration: none; display: block; padding: 2px 0; }
+  @media (max-width: 900px) { #activityCol { display: none; } }
+</style>
+</head>
+<body>
+<header>
+  <span class="logo">&#x1F590;</span>
+  <h1>HAMSA AGENT</h1>
+  <span class="status" id="status">pronto</span>
+</header>
+<main>
+  <div id="chatCol">
+    <div id="chat">
+      <div class="msg agent"><div class="who">Hamsa Agent</div>Olá! Me descreva uma tarefa — por exemplo: <i>"pesquise as regras atuais do IPMI para seguro viagem e monte um resumo em um arquivo markdown"</i> — e eu planejo e executo, mostrando cada passo no painel ao lado.</div>
+    </div>
+    <form id="form">
+      <textarea id="input" placeholder="Descreva a tarefa..." rows="2"></textarea>
+      <button id="sendBtn" type="submit">Enviar</button>
+    </form>
+  </div>
+  <div id="activityCol">
+    <h2>Atividade do agente</h2>
+    <div id="activity"></div>
+    <div id="files"><b>Arquivos gerados:</b><div id="fileList">(nenhum ainda)</div></div>
+  </div>
+</main>
+<script>
+const chat = document.getElementById("chat");
+const activity = document.getElementById("activity");
+const form = document.getElementById("form");
+const input = document.getElementById("input");
+const sendBtn = document.getElementById("sendBtn");
+const statusEl = document.getElementById("status");
+let sessionId = localStorage.getItem("hamsa-agent-session") || null;
+
+function el(cls, html) {
+  const d = document.createElement("div");
+  d.className = cls;
+  d.innerHTML = html;
+  return d;
+}
+function scrollBottom(node) { node.scrollTop = node.scrollHeight; }
+
+function addActivity(cls, html) {
+  activity.appendChild(el("act " + cls, html));
+  scrollBottom(activity);
+}
+
+async function refreshFiles() {
+  if (!sessionId) return;
+  const r = await fetch(`/api/files/${sessionId}`);
+  const { files } = await r.json();
+  const list = document.getElementById("fileList");
+  list.innerHTML = files.length
+    ? files.map(f => `<a href="/api/files/${sessionId}/download?path=${encodeURIComponent(f)}">&#128196; ${f}</a>`).join("")
+    : "(nenhum ainda)";
+}
+
+form.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const message = input.value.trim();
+  if (!message) return;
+  input.value = "";
+  sendBtn.disabled = true;
+  statusEl.textContent = "trabalhando...";
+
+  const userDiv = el("msg user", '<div class="who">Você</div>');
+  userDiv.appendChild(document.createTextNode(message));
+  chat.appendChild(userDiv);
+
+  let agentDiv = null, thinkDiv = null;
+  const ensureAgentDiv = () => {
+    if (!agentDiv) {
+      agentDiv = el("msg agent", '<div class="who">Hamsa Agent</div><span class="body"></span>');
+      chat.appendChild(agentDiv);
+    }
+    return agentDiv.querySelector(".body");
+  };
+  scrollBottom(chat);
+
+  try {
+    const resp = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sessionId, message }),
+    });
+    if (!resp.ok) throw new Error((await resp.json()).error || resp.statusText);
+
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      let idx;
+      while ((idx = buffer.indexOf("\n\n")) !== -1) {
+        const chunk = buffer.slice(0, idx);
+        buffer = buffer.slice(idx + 2);
+        if (!chunk.startsWith("data: ")) continue;
+        const ev = JSON.parse(chunk.slice(6));
+        handleEvent(ev);
+      }
+    }
+  } catch (err) {
+    chat.appendChild(el("msg agent error", "Erro: " + err.message));
+  } finally {
+    sendBtn.disabled = false;
+    statusEl.textContent = "pronto";
+    scrollBottom(chat);
+    refreshFiles();
+  }
+
+  function handleEvent(ev) {
+    switch (ev.type) {
+      case "session":
+        sessionId = ev.sessionId;
+        localStorage.setItem("hamsa-agent-session", sessionId);
+        break;
+      case "text": {
+        // novo balão a cada rodada de texto após ferramentas
+        const body = ensureAgentDiv();
+        body.textContent += ev.text;
+        scrollBottom(chat);
+        break;
+      }
+      case "thinking":
+        if (!thinkDiv) { thinkDiv = el("msg agent thinking", ""); chat.appendChild(thinkDiv); }
+        thinkDiv.textContent += ev.text;
+        scrollBottom(chat);
+        break;
+      case "tool_use": {
+        agentDiv = null; thinkDiv = null; // próximo texto abre novo balão
+        const inputStr = JSON.stringify(ev.input || {}, null, 0);
+        addActivity("", `<span class="tname">&#9881; ${ev.name}</span><pre>${escapeHtml(inputStr.slice(0, 600))}</pre>`);
+        statusEl.textContent = "executando: " + ev.name;
+        break;
+      }
+      case "tool_result":
+        addActivity("result" + (ev.is_error ? " err" : ""),
+          `<span class="tname">&#8627; ${ev.name}</span><pre>${escapeHtml(String(ev.summary || "").slice(0, 600))}</pre>`);
+        statusEl.textContent = "trabalhando...";
+        refreshFiles();
+        break;
+      case "error":
+        chat.appendChild(el("msg agent error", escapeHtml(ev.message)));
+        break;
+      case "done":
+        break;
+    }
+  }
+});
+
+function escapeHtml(s) {
+  return s.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+input.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); form.requestSubmit(); }
+});
+refreshFiles();
+</script>
+</body>
+</html>
