@@ -1,5 +1,9 @@
 # PWA assets — ícones na Home para os apps Hamsa
 
+> 📐 **Novo:** especificação do **módulo de Comissões** (conciliação de
+> bordereaux IPMI) em [`comissoes/`](comissoes/) — desenho + `schema.sql`
+> validado, pronto para o Postgres do NAS.
+
 Artefatos **prontos para deploy** que dão identidade PWA (ícone standalone na home
 do Android, sem barra do navegador) aos apps Hamsa. Produzidos a partir do símbolo
 **2026** `hamsa_simbolo_2026.png` (hamsa dourado 3D, fundo transparente).
