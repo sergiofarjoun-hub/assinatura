@@ -169,10 +169,16 @@ backup criptografado.
 
 | Fase | Entrega | Critério de pronto |
 |------|---------|--------------------|
-| 0 | Postgres 16 no NAS + `schema.sql` aplicado + seeds das seguradoras | `\dt comissoes.*` lista as 9 tabelas; views respondem |
+| 0 | Postgres 16 no NAS + `schema.sql` aplicado + seeds das seguradoras — **script pronto: [`nas/comissoes-fase0.sh`](../nas/comissoes-fase0.sh)** | `\dt comissoes.*` lista as 9 tabelas; views respondem |
 | 1 | Cadastro de regras de comissão reais + sync inicial de apólices do Multi Apólices | 100% das apólices ativas com parcelas esperadas geradas |
 | 2 | Importador de bordereau (upload + mapeamento por seguradora) + matching automático | 1 bordereau real de cada seguradora importado e conciliado |
 | 3 | Tela de pendências/divergências + relatório de aging | Fechamento de um mês completo dentro do sistema |
 | 4 | Card de KPIs no Command Center + entrada na sidebar | Números do card batem com o relatório de fechamento |
 
-A fase 0 é executável hoje: subir o container Postgres e rodar `schema.sql`.
+A fase 0 está pronta para executar: copiar `nas/comissoes-fase0.sh` para o
+`/tmp` do NAS e rodar `sudo sh /tmp/comissoes-fase0.sh`. O script é
+autocontido (schema embutido), idempotente e no padrão dos scripts anteriores:
+verifica cada etapa e **para na primeira falha**. Ele sobe o container
+`hamsa-comissoes-db` (postgres:16, porta `127.0.0.1:5432`, restart automático),
+aplica e confere o schema, e instala o `backup.sh` diário (falta só agendar no
+Agendador de Tarefas do DSM).
