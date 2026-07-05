@@ -202,13 +202,16 @@ CREATE TABLE IF NOT EXISTS taxa_cambio (
 );
 
 -- =============================================================================
--- Geração de parcelas esperadas da vigência corrente de uma apólice.
--- Idempotente (ON CONFLICT DO NOTHING): o job diário chama para toda apólice
--- ativa. Retorna quantas parcelas novas foram criadas.
+-- Geração de parcelas esperadas de uma vigência da apólice.
+-- p_ano NULL = vigência corrente (job diário). p_ano explícito = vigência
+-- alvo — usado pela renovação, que confirma ANTES do aniversário e precisa
+-- gerar o ano novo (taxa de renovação), não o corrente.
+-- Idempotente (ON CONFLICT DO NOTHING). Retorna quantas parcelas criou.
 -- =============================================================================
-CREATE OR REPLACE FUNCTION gerar_parcelas(p_apolice_id bigint)
+DROP FUNCTION IF EXISTS gerar_parcelas(bigint);  -- assinatura antiga (1 arg)
+CREATE OR REPLACE FUNCTION gerar_parcelas(p_apolice_id bigint, p_ano int DEFAULT NULL)
 RETURNS integer
-LANGUAGE plpgsql AS $$
+LANGUAGE plpgsql SET search_path = comissoes AS $$
 DECLARE
     a         apolice%ROWTYPE;
     r         regra_comissao%ROWTYPE;
@@ -226,8 +229,9 @@ BEGIN
         RETURN 0;
     END IF;
 
-    -- ano de vigência corrente (1 = primeiro ano)
-    v_ano := greatest(1, floor((current_date - a.data_inicio) / 365.25)::int + 1);
+    -- ano de vigência (1 = primeiro ano): explícito ou o corrente
+    v_ano := coalesce(p_ano,
+                      greatest(1, floor((current_date - a.data_inicio) / 365.25)::int + 1));
     v_ini := (a.data_inicio + make_interval(years => v_ano - 1))::date;
 
     v_n := CASE a.frequencia

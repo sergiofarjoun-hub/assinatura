@@ -105,7 +105,9 @@ erDiagram
 
 1. **Geração (automática, job diário)** — para toda apólice ativa, garante que
    as parcelas esperadas da vigência corrente existam (função
-   `comissoes.gerar_parcelas(apolice_id)` no schema). Apólice renovou no Multi
+   `comissoes.gerar_parcelas(apolice_id, ano DEFAULT NULL)` no schema; o ano
+   explícito é usado pelo módulo de Renovações para gerar a vigência nova
+   antes do aniversário). Apólice renovou no Multi
    Apólices → novo ano de vigência → novas parcelas com taxa de renovação.
 2. **Importação** — chegou o extrato da seguradora: upload do XLSX/CSV, o
    sistema aplica o `mapeamento_bordereau` daquela seguradora e cria os itens.

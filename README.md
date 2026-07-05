@@ -1,8 +1,11 @@
 # PWA assets — ícones na Home para os apps Hamsa
 
-> 📐 **Novo:** especificação do **módulo de Comissões** (conciliação de
-> bordereaux IPMI) em [`comissoes/`](comissoes/) — desenho + `schema.sql`
-> validado, pronto para o Postgres do NAS.
+> 📐 **Sistema da corretora:** a visão geral dos módulos está em
+> [`ARQUITETURA.md`](ARQUITETURA.md). Cada módulo tem desenho + `schema.sql`
+> validado: [`comissoes/`](comissoes/) · [`cadastro/`](cadastro/) ·
+> [`comunicacao/`](comunicacao/) · [`propostas/`](propostas/) ·
+> [`renovacoes/`](renovacoes/) · [`portal/`](portal/). Fase 0 (Postgres no
+> NAS): `nas/comissoes-fase0.sh`.
 
 Artefatos **prontos para deploy** que dão identidade PWA (ícone standalone na home
 do Android, sem barra do navegador) aos apps Hamsa. Produzidos a partir do símbolo
