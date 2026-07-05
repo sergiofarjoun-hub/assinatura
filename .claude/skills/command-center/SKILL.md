@@ -86,10 +86,22 @@ Estrutura da página (mobile-first — Sergio usa PWAs no Android):
 7. **Rodapé** — fontes consultadas, integrações indisponíveis, e nota "gerado
    por /command-center".
 
-Requisitos técnicos: HTML autocontido (CSS inline, sem CDN), responsivo,
+Requisitos técnicos: HTML autocontido (CSS/JS inline, sem CDN), responsivo,
 tema claro/escuro via `prefers-color-scheme` + `:root[data-theme=...]`,
 tabelas/listas largas com `overflow-x:auto`. Não exponha conteúdo integral de
 e-mails — só remetente/assunto/resumo de uma linha.
+
+**Interatividade obrigatória (concluir/adiar):** todo item acionável (Top 3,
+agenda, semana, e-mails, follow-ups) recebe, via JS injetado no load, um
+checkbox `✓` (concluir → risca e esmaece o item) e um botão `adiar` (esmaece
+e vira `retomar`; itens adiados voltam ao normal automaticamente no dia
+seguinte). Estado persistido em `localStorage` na chave `hamsa-cc-v1`, com id
+derivado de hash do texto normalizado do item (assim os checks sobrevivem a
+republicações do painel na mesma URL). Mostrar linha de progresso no
+cabeçalho ("X concluído(s) · Y adiado(s)") e nota no rodapé de que os
+marcadores ficam salvos no navegador. Ao RE-GERAR o painel em outra sessão,
+lembre que esse estado é local do navegador do usuário — não presuma no chat
+que algo foi concluído.
 
 ## 5. Resposta ao usuário
 
