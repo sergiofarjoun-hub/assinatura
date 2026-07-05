@@ -92,10 +92,11 @@ tabelas/listas largas com `overflow-x:auto`. Não exponha conteúdo integral de
 e-mails — só remetente/assunto/resumo de uma linha.
 
 **Interatividade obrigatória (concluir/adiar):** todo item acionável (Top 3,
-agenda, semana, e-mails, follow-ups) recebe, via JS injetado no load, um
-checkbox `✓` (concluir → risca e esmaece o item) e um botão `adiar` (esmaece
-e vira `retomar`; itens adiados voltam ao normal automaticamente no dia
-seguinte). Estado persistido em `localStorage` na chave `hamsa-cc-v1`, com id
+agenda, semana, e-mails, follow-ups) recebe, via JS injetado no load, dois
+botões-pílula COM RÓTULO VISÍVEL (nunca um checkbox sem texto): `✓ concluir`
+(contorno dourado; ao marcar vira `✓ concluído` preenchido, risca e esmaece o
+item) e `adiar` (esmaece e vira `retomar`; itens adiados voltam ao normal
+automaticamente no dia seguinte). Estado persistido em `localStorage` na chave `hamsa-cc-v1`, com id
 derivado de hash do texto normalizado do item (assim os checks sobrevivem a
 republicações do painel na mesma URL). Mostrar linha de progresso no
 cabeçalho ("X concluído(s) · Y adiado(s)") e nota no rodapé de que os
