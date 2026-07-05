@@ -19,8 +19,14 @@ const FALLBACK_ADMIN = '⚠️ Não consegui gerar resposta (veja os logs do age
  * @param {{kind:'image'|'pdf', mediaType:string, dataB64:string}|null} [media] anexo da última mensagem
  * @returns {Promise<string>} texto da resposta
  */
-async function generateReply(history, admin, media) {
+async function generateReply(history, admin, media, systemNote) {
   const systemPrompt = admin ? ADMIN_PROMPT : CLIENT_PROMPT;
+  const systemBlocks = [
+    { type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } },
+  ];
+  // Nota volátil do sistema (ex.: cadastro localizado) vai num bloco separado,
+  // DEPOIS do bloco cacheado, para não invalidar o cache do prompt principal.
+  if (systemNote) systemBlocks.push({ type: 'text', text: systemNote });
 
   // Se a última mensagem trouxe imagem/PDF, transforma o conteúdo do último
   // turno num array de blocos (mídia + texto) para o Claude analisar o arquivo.
@@ -49,13 +55,7 @@ async function generateReply(history, admin, media) {
       max_tokens: config.maxTokens,
       thinking: { type: 'adaptive' },
       output_config: { effort: config.effort },
-      system: [
-        {
-          type: 'text',
-          text: systemPrompt,
-          cache_control: { type: 'ephemeral' },
-        },
-      ],
+      system: systemBlocks,
       messages,
     });
 

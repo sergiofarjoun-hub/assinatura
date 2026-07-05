@@ -82,9 +82,9 @@ function collectClients() {
 }
 
 // Encontra a pasta EXISTENTE do cliente por número de apólice ou nome, dentro
-// de Saúde/<Operadora>/. NUNCA cria pasta de cliente. Só retorna quando o match
+// de <Ramo>/<Operadora>/. NUNCA cria pasta de cliente. Só retorna quando o match
 // é ÚNICO e seguro (evita salvar no cliente errado). Se a operadora for
-// informada, restringe a busca a ela. Retorna o caminho absoluto ou null.
+// informada, restringe a busca a ela. Retorna { path, nome, operadora } ou null.
 function resolveFolder({ nome, apolice, operadora }) {
   if (!enabled()) return null;
   let cands = collectClients();
@@ -100,18 +100,20 @@ function resolveFolder({ nome, apolice, operadora }) {
     if (f.length) cands = f;
   }
 
+  const pick = (c) => ({ path: c.path, nome: c.name, operadora: c.operadora });
+
   // 1) por número de apólice (mais confiável): match único
   const digits = (apolice || '').replace(/\D/g, '');
   if (digits.length >= 4) {
     const hits = cands.filter((c) => c.name.replace(/\D/g, '').includes(digits));
-    if (hits.length === 1) return hits[0].path;
+    if (hits.length === 1) return pick(hits[0]);
   }
 
   // 2) por nome: exato normalizado (único) tem prioridade
   const nnome = norm(nome);
   if (nnome) {
     const exact = cands.filter((c) => norm(c.name) === nnome);
-    if (exact.length === 1) return exact[0].path;
+    if (exact.length === 1) return pick(exact[0]);
 
     // senão, exige >=2 tokens do nome, todos presentes, resultado único
     const toks = nnome.split(' ').filter(Boolean);
@@ -120,11 +122,16 @@ function resolveFolder({ nome, apolice, operadora }) {
         const fn = norm(c.name);
         return toks.every((t) => fn.includes(t));
       });
-      if (c2.length === 1) return c2[0].path;
+      if (c2.length === 1) return pick(c2[0]);
     }
   }
 
   return null; // não identificado (0) ou ambíguo (vários)
+}
+
+// Pasta de retenção para documentos ainda não identificados/confirmados.
+function retentionDir(ref) {
+  return path.join(BASE, '_a_identificar', sanitize(ref) || 'sem_referencia');
 }
 
 function extFor(attachment) {
@@ -141,26 +148,27 @@ function stamp() {
   )}${p(d.getSeconds())}`;
 }
 
-// Salva o documento. Se o cliente for identificado, salva na pasta dele
-// (<cliente>/<subpasta>). Se NÃO for identificado, salva numa área de retenção
-// (_a_identificar/<ref>) para arquivamento manual — nunca cria pasta de cliente.
+function fileName(attachment) {
+  const orig = attachment.filename ? sanitize(path.basename(attachment.filename)) : '';
+  const hasExt = orig && path.extname(orig);
+  return `${stamp()}_${orig || attachment.kind}${hasExt ? '' : extFor(attachment)}`;
+}
+
+// Salva o documento. Só arquiva na pasta do cliente quando ele foi IDENTIFICADO
+// (match único) E CONFIRMADO (profile.confirmed). Caso contrário, guarda em
+// retenção (_a_identificar/<ref>) — nunca cria pasta de cliente.
 // Retorna { path, identified } ou null (recurso desligado / falha).
-// attachment: { kind, mediaType, dataB64, filename }; ref: identificador do chat.
 function saveDocument(profile, attachment, ref) {
   if (!enabled()) return null;
 
-  const folder = resolveFolder(profile || {});
-  const identified = !!folder;
-  const destDir = identified
-    ? path.join(folder, SUBFOLDER)
-    : path.join(BASE, '_a_identificar', sanitize(ref) || 'sem_referencia');
+  const p = profile || {};
+  const match = p.confirmed ? resolveFolder(p) : null;
+  const identified = !!match;
+  const destDir = identified ? path.join(match.path, SUBFOLDER) : retentionDir(ref);
 
   try {
     fs.mkdirSync(destDir, { recursive: true });
-    const orig = attachment.filename ? sanitize(path.basename(attachment.filename)) : '';
-    const hasExt = orig && path.extname(orig);
-    const name = `${stamp()}_${orig || attachment.kind}${hasExt ? '' : extFor(attachment)}`;
-    const dest = path.join(destDir, name);
+    const dest = path.join(destDir, fileName(attachment));
     fs.writeFileSync(dest, Buffer.from(attachment.dataB64, 'base64'));
     return { path: dest, identified };
   } catch (err) {
@@ -169,4 +177,47 @@ function saveDocument(profile, attachment, ref) {
   }
 }
 
-module.exports = { enabled, resolveFolder, saveDocument, BASE };
+// Move os documentos retidos (_a_identificar/<ref>) para a pasta do cliente,
+// depois que ele é confirmado. Retorna a quantidade movida.
+function moveRetained(ref, profile) {
+  if (!enabled()) return 0;
+  const match = resolveFolder(profile || {});
+  if (!match) return 0;
+
+  const rdir = retentionDir(ref);
+  let files;
+  try {
+    files = fs.readdirSync(rdir).filter((f) => !f.startsWith('.'));
+  } catch {
+    return 0;
+  }
+  if (!files.length) return 0;
+
+  const dest = path.join(match.path, SUBFOLDER);
+  fs.mkdirSync(dest, { recursive: true });
+  let n = 0;
+  for (const f of files) {
+    const from = path.join(rdir, f);
+    const to = path.join(dest, f);
+    try {
+      fs.renameSync(from, to);
+      n++;
+    } catch {
+      try {
+        fs.copyFileSync(from, to);
+        fs.unlinkSync(from);
+        n++;
+      } catch (err) {
+        console.error('Falha ao mover documento retido:', err.message);
+      }
+    }
+  }
+  try {
+    if (fs.readdirSync(rdir).filter((f) => !f.startsWith('.')).length === 0) fs.rmdirSync(rdir);
+  } catch {
+    /* ignora */
+  }
+  return n;
+}
+
+module.exports = { enabled, resolveFolder, saveDocument, moveRetained, BASE };

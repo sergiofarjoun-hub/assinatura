@@ -73,6 +73,18 @@ async function sendText(sock, jid, text) {
   return sent;
 }
 
+// Remove emojis e símbolos pictográficos (formalidade no atendimento a clientes).
+function stripEmojis(text) {
+  return text
+    .replace(
+      /[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{2190}-\u{21FF}\u{FE00}-\u{FE0F}\u{1F1E6}-\u{1F1FF}\u{200D}\u{20E3}\u{2122}\u{2139}]/gu,
+      ''
+    )
+    .replace(/[ \t]{2,}/g, ' ')
+    .replace(/ +\n/g, '\n')
+    .trim();
+}
+
 // ---------- comandos de admin ----------
 
 const HELP = [
@@ -164,24 +176,52 @@ async function respond(sock, jid, text, admin, msg) {
 
   // Identificação do cliente + salvamento de documentos (só no modo cliente,
   // e só se a pasta de clientes existir).
+  let systemNote = '';
   if (!admin && clientes.enabled()) {
-    const profile = store.getProfile(jid);
-    if (!profile.nome) {
+    let profile = store.getProfile(jid);
+
+    // enquanto não confirmado, tenta captar nome/apólice/operadora da conversa
+    if (!profile.confirmed) {
       const found = await extractIdentity(store.history(jid));
-      if (found.nome || found.apolice) store.setProfile(jid, found);
+      if (found.nome || found.apolice || found.operadora) {
+        profile = store.setProfile(jid, found);
+      }
     }
+
+    // salva documento recebido (só arquiva no cliente se já confirmado)
     if (attachment) {
-      const saved = clientes.saveDocument(store.getProfile(jid), attachment, numberOf(jid));
+      const saved = clientes.saveDocument(profile, attachment, numberOf(jid));
       if (saved && saved.identified) {
         console.log(`Documento salvo: ${saved.path}`);
       } else if (saved) {
-        console.log(`Documento NÃO identificado salvo em retenção: ${saved.path}`);
-        await notifyOwner(
-          sock,
-          `📎 Documento recebido de ${numberOf(jid)}, mas o cliente ainda NÃO foi ` +
-            `identificado (nome/apólice). Salvo em retenção "_a_identificar". ` +
-            `Favor conferir e arquivar na pasta correta.`
-        ).catch(() => {});
+        console.log(`Documento em retenção: ${saved.path}`);
+        // só avisa o dono se realmente não há cadastro correspondente
+        if (!clientes.resolveFolder(profile)) {
+          await notifyOwner(
+            sock,
+            `📎 Documento recebido de ${numberOf(jid)}, mas o cadastro do cliente ` +
+              `não foi localizado. Salvo em retenção "_a_identificar". Favor conferir.`
+          ).catch(() => {});
+        }
+      }
+    }
+
+    // nota do sistema para o agente confirmar o cadastro antes de arquivar
+    if (!profile.confirmed) {
+      const m = clientes.resolveFolder(profile);
+      if (m) {
+        systemNote =
+          `[SISTEMA] Cadastro localizado: cliente "${m.nome}" na operadora ` +
+          `"${m.operadora}". Antes de considerar os documentos arquivados, CONFIRME ` +
+          `com o cliente de forma cortês (ex.: "Localizei o cadastro de ${m.nome} na ` +
+          `${m.operadora}. O(a) senhor(a) confirma?"). Quando o cliente CONFIRMAR que ` +
+          `é o cadastro correto, inclua na ÚLTIMA linha da resposta a etiqueta ` +
+          `[[CLIENTE_CONFIRMADO]] (sinal interno; o cliente não a vê).`;
+      } else if (profile.nome || profile.apolice) {
+        systemNote =
+          '[SISTEMA] Ainda não foi possível localizar o cadastro com os dados ' +
+          'informados. Peça com cortesia o NOME COMPLETO exato e a OPERADORA ' +
+          '(ex.: VUMI, Cigna) para localizar. NÃO afirme que localizou o cadastro.';
       }
     }
   }
@@ -189,16 +229,28 @@ async function respond(sock, jid, text, admin, msg) {
   await sock.presenceSubscribe(jid).catch(() => {});
   await sock.sendPresenceUpdate('composing', jid).catch(() => {});
 
-  const raw = await generateReply(store.history(jid), admin, attachment);
+  const raw = await generateReply(store.history(jid), admin, attachment, systemNote);
 
-  // Handoff para humano: o agente marca [[HANDOFF]] quando o cliente pede o
-  // Concierge. Removemos a etiqueta, pausamos o bot no chat e avisamos o dono.
+  // Marcadores internos do agente (removidos antes de enviar ao cliente):
+  //  [[HANDOFF]]            -> cliente quer o Concierge (pausa + avisa dono)
+  //  [[CLIENTE_CONFIRMADO]] -> cliente confirmou o cadastro (arquiva documentos)
   const wantsConcierge = !admin && raw.includes('[[HANDOFF]]');
-  const reply = raw.replace(/\s*\[\[HANDOFF\]\]\s*/g, '').trim();
+  const clienteConfirmado = !admin && raw.includes('[[CLIENTE_CONFIRMADO]]');
+  let reply = raw.replace(/\s*\[\[(HANDOFF|CLIENTE_CONFIRMADO)\]\]\s*/g, '').trim();
+  // Garantia extra de formalidade: nenhum emoji vai para o cliente.
+  if (!admin) reply = stripEmojis(reply);
 
   await sock.sendPresenceUpdate('paused', jid).catch(() => {});
   await sendText(sock, jid, reply);
   store.pushMessage(jid, 'assistant', reply);
+
+  // Cliente confirmou o cadastro: marca confirmado e move documentos retidos
+  // (enviados antes da confirmação) para a pasta do cliente.
+  if (clienteConfirmado) {
+    const prof = store.setProfile(jid, { confirmed: true });
+    const moved = clientes.moveRetained(numberOf(jid), prof);
+    if (moved > 0) console.log(`${moved} documento(s) movido(s) para a pasta de ${prof.nome}.`);
+  }
 
   if (wantsConcierge) {
     const mins = Math.max(config.handoffPauseMinutes, 120);
