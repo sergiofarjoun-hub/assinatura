@@ -220,8 +220,9 @@ async function respond(sock, jid, text, admin, msg) {
       } else if (profile.nome || profile.apolice) {
         systemNote =
           '[SISTEMA] Ainda não foi possível localizar o cadastro com os dados ' +
-          'informados. Peça com cortesia o NOME COMPLETO exato e a OPERADORA ' +
-          '(ex.: VUMI, Cigna) para localizar. NÃO afirme que localizou o cadastro.';
+          'informados. Peça com cortesia o NOME COMPLETO exato OU o NÚMERO DA ' +
+          'APÓLICE, e a OPERADORA (ex.: VUMI, Ever, Redbridge, AFGS, Trawick) ' +
+          'para localizar. NÃO afirme que localizou o cadastro.';
       }
     }
   }

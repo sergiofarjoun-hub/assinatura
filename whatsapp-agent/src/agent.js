@@ -115,7 +115,7 @@ async function extractIdentity(history) {
               operadora: {
                 type: 'string',
                 description:
-                  'Operadora/seguradora citada (ex.: VUMI, Cigna, Allianz, Bupa), ou "" se não informado',
+                  'Operadora/seguradora citada (ex.: VUMI, Ever, Redbridge, AFGS, Trawick), ou "" se não informado',
               },
             },
             required: ['nome', 'apolice', 'operadora'],
