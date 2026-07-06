@@ -331,6 +331,13 @@ async function start() {
       const text = extractText(msg);
       const hasMedia = !!media.detectMedia(msg);
 
+      // log de diagnóstico: registra TODA mensagem recebida
+      console.log(
+        `[msg] de=${numberOf(jid)} fromMe=${!!msg.key.fromMe} midia=${hasMedia} texto=${JSON.stringify(
+          (text || '').slice(0, 80)
+        )}`
+      );
+
       if (msg.key.fromMe) {
         if (sentByBot.has(msg.key.id)) continue; // mensagem do próprio bot
 
