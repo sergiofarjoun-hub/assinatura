@@ -93,6 +93,7 @@ function setProfile(jid, patch) {
   if (patch.nome) cur.nome = patch.nome;
   if (patch.apolice) cur.apolice = patch.apolice;
   if (patch.operadora) cur.operadora = patch.operadora;
+  if (patch.assunto) cur.assunto = patch.assunto;
   if (typeof patch.confirmed === 'boolean') cur.confirmed = patch.confirmed;
   save();
   return cur;

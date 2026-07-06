@@ -10,7 +10,34 @@ const fs = require('fs');
 const path = require('path');
 
 const BASE = process.env.CLIENTES_DIR || '/Users/hamsa/SERVER/CLIENTES';
-const SUBFOLDER = process.env.CLIENTES_SUBPASTA || 'reembolsos';
+// Subpasta padrão quando o assunto não é identificado.
+const SUBFOLDER = process.env.CLIENTES_SUBPASTA || 'CLIENT DOCS';
+
+// Roteamento do documento pela pasta que já existe no cadastro do cliente,
+// conforme o tipo de solicitação. Ajuste aqui se seu padrão de pastas mudar.
+const SUBPASTA_POR_ASSUNTO = {
+  reembolso: '_CLAIMS',
+  gop: '_GOP',
+  exames: '_CLAIMS',
+};
+
+// Escolhe a subpasta destino a partir do assunto. Se existir uma pasta com o
+// nome esperado dentro do cliente (mesmo com maiúsc./minúsc. diferentes), usa
+// a existente; senão devolve o nome canônico (será criado).
+function subfolderFor(clientDir, assunto) {
+  const desired = SUBPASTA_POR_ASSUNTO[assunto] || SUBFOLDER;
+  try {
+    const existing = fs
+      .readdirSync(clientDir, { withFileTypes: true })
+      .filter((d) => d.isDirectory())
+      .map((d) => d.name);
+    const hit = existing.find((n) => n.toLowerCase() === desired.toLowerCase());
+    if (hit) return hit;
+  } catch {
+    /* ignora */
+  }
+  return desired;
+}
 
 let warned = false;
 
@@ -164,7 +191,9 @@ function saveDocument(profile, attachment, ref) {
   const p = profile || {};
   const match = p.confirmed ? resolveFolder(p) : null;
   const identified = !!match;
-  const destDir = identified ? path.join(match.path, SUBFOLDER) : retentionDir(ref);
+  const destDir = identified
+    ? path.join(match.path, subfolderFor(match.path, p.assunto))
+    : retentionDir(ref);
 
   try {
     fs.mkdirSync(destDir, { recursive: true });
@@ -193,7 +222,7 @@ function moveRetained(ref, profile) {
   }
   if (!files.length) return 0;
 
-  const dest = path.join(match.path, SUBFOLDER);
+  const dest = path.join(match.path, subfolderFor(match.path, (profile || {}).assunto));
   fs.mkdirSync(dest, { recursive: true });
   let n = 0;
   for (const f of files) {

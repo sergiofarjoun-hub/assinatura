@@ -180,10 +180,12 @@ async function respond(sock, jid, text, admin, msg) {
   if (!admin && clientes.enabled()) {
     let profile = store.getProfile(jid);
 
-    // enquanto não confirmado, tenta captar nome/apólice/operadora da conversa
-    if (!profile.confirmed) {
+    // capta nome/apólice/operadora/assunto da conversa. Roda enquanto o cliente
+    // não foi confirmado e também quando chega um documento (para saber o
+    // assunto e arquivar na pasta certa — _CLAIMS, _GOP, etc.).
+    if (!profile.confirmed || attachment) {
       const found = await extractIdentity(store.history(jid));
-      if (found.nome || found.apolice || found.operadora) {
+      if (found.nome || found.apolice || found.operadora || found.assunto) {
         profile = store.setProfile(jid, found);
       }
     }

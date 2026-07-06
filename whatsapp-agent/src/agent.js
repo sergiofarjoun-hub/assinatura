@@ -117,8 +117,15 @@ async function extractIdentity(history) {
                 description:
                   'Operadora/seguradora citada (ex.: VUMI, Ever, Redbridge, AFGS, Trawick), ou "" se não informado',
               },
+              assunto: {
+                type: 'string',
+                description:
+                  'Tipo de solicitação em curso: "reembolso" (reembolso/claim), "gop" ' +
+                  '(internação/garantia de pagamento), "exames" (autorização de exames), ' +
+                  'ou "" se ainda não estiver claro',
+              },
             },
-            required: ['nome', 'apolice', 'operadora'],
+            required: ['nome', 'apolice', 'operadora', 'assunto'],
             additionalProperties: false,
           },
         },
@@ -127,9 +134,9 @@ async function extractIdentity(history) {
         {
           role: 'user',
           content:
-            'Extraia o NOME do cliente e o NÚMERO DA APÓLICE mencionados nesta ' +
-            'conversa de atendimento. Se algum não estiver presente, devolva "" ' +
-            '(string vazia). Não invente.\n\n' +
+            'Extraia da conversa de atendimento: NOME do cliente, NÚMERO DA APÓLICE, ' +
+            'OPERADORA e o ASSUNTO/tipo de solicitação (reembolso, gop ou exames). ' +
+            'Se algum não estiver presente, devolva "" (string vazia). Não invente.\n\n' +
             convo,
         },
       ],
@@ -140,6 +147,7 @@ async function extractIdentity(history) {
       nome: (data.nome || '').trim(),
       apolice: (data.apolice || '').trim(),
       operadora: (data.operadora || '').trim(),
+      assunto: (data.assunto || '').trim().toLowerCase(),
     };
   } catch (err) {
     console.error('Falha ao extrair identidade do cliente:', err.message);
