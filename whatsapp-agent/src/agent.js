@@ -215,9 +215,9 @@ async function updateFicha(currentFicha, history, media) {
     '(data, paciente, procedimento/prestador, valor cobrado, valor aplicado à franquia, ' +
     'valor pago, status). Status: "pendente", "processado" ou "negado". Atualize o status ' +
     'quando a conversa ou um documento indicar mudança.\n' +
-    '- FRANQUIA: só some/registre "aplicado à franquia" quando vier de um EOB ' +
-    '(Explanation of Benefits) ou valor CONFIRMADO pela seguradora. Caso contrário, deixe ' +
-    'em branco ou marque "estimativa". NUNCA invente números.\n' +
+    '- FRANQUIA: só some/registre "aplicado à franquia" com base em valor CONFIRMADO ' +
+    '(controle de Claims/Renovações da Hamsa, EOB da seguradora ou documento oficial). ' +
+    'Sem confirmação, deixe em branco ou marque "estimativa". NUNCA invente números.\n' +
     '- Some a franquia por pessoa e o total familiar em "Posição da franquia".\n' +
     '- Se houver documento anexo (EOB, nota fiscal, recibo, pedido médico, relatório), ' +
     'extraia dele os dados relevantes e registre em "Documentos recebidos" e, se for o ' +

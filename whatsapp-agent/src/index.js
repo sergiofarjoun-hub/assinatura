@@ -241,8 +241,9 @@ async function respond(sock, jid, text, admin, msg) {
           ficha +
           '\n\nUse esses dados para responder com precisão. Se o cliente perguntar sobre ' +
           'a posição da franquia, claims pendentes ou já processados, responda com base ' +
-          'nesta ficha. Deixe claro que o valor de franquia depende da confirmação (EOB) ' +
-          'da seguradora e que a posição OFICIAL é sempre a da seguradora.';
+          'nesta ficha. A posição de referência é o CONTROLE INTERNO da Hamsa (app de ' +
+          'Claims / Renovações); use os valores da ficha como esse controle. Se algum ' +
+          'dado não estiver na ficha, diga que vai levantar a posição atualizada no Claims.';
       }
     }
   }
