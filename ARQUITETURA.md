@@ -24,11 +24,12 @@ sidebar, não como PWA separado.
 | Cadastro (banco unificado de pessoas) | [`cadastro/`](cadastro/) | `cadastro` | especificado | `comissoes` |
 | Propostas & Subscrição | [`propostas/`](propostas/) | `propostas` | especificado | `cadastro`, `comissoes`, DocuSeal |
 | Renovações 2.0 (reajuste) | [`renovacoes/`](renovacoes/) | `renovacoes` | especificado | `comissoes`, `comunicacao` |
+| Claims / Reembolsos (franquia) | [`claims/`](claims/) | `claims` | especificado | `comissoes`, `cadastro` |
 | Comunicação (WhatsApp/e-mail) | [`comunicacao/`](comunicacao/) | `comunicacao` | especificado | `cadastro` |
 | Portal do Cliente | [`portal/`](portal/) | `portal` | especificado (última fase) | todos acima |
 
 **Ordem de aplicação dos schemas** (respeita as FKs):
-`comissoes` → `cadastro` → `comunicacao` → `propostas` → `renovacoes` → `portal`.
+`comissoes` → `cadastro` → `comunicacao` → `propostas` → `renovacoes` → `claims` → `portal`.
 Todos os `schema.sql` são idempotentes; aplicar tudo de novo nunca quebra.
 
 ## Entidades compartilhadas — quem é dono do quê
