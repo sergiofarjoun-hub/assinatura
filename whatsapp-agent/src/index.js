@@ -253,16 +253,18 @@ async function respond(sock, jid, text, admin, msg) {
   }
 
   if (wantsConcierge) {
-    const mins = Math.max(config.handoffPauseMinutes, 120);
-    store.pauseChat(jid, mins);
+    // Avisa o dono, mas NÃO pausa o bot: o cliente pode mudar de ideia e
+    // continuar (reembolso, etc.). O bot só se cala quando o dono responder o
+    // cliente manualmente (handoff automático via fromMe).
     const prof = store.getProfile(jid);
     const quem = prof.nome ? `${prof.nome} (${numberOf(jid)})` : numberOf(jid);
-    console.log(`Handoff pedido por ${quem}: bot pausado por ${mins} min.`);
+    console.log(`Concierge solicitado por ${quem}.`);
     await notifyOwner(
       sock,
       `🔔 *Concierge solicitado*\nCliente: ${quem}` +
         (prof.apolice ? `\nApólice: ${prof.apolice}` : '') +
-        `\nO bot foi pausado nesse chat por ${mins} min. Assuma a conversa quando puder.`
+        `\nO cliente pediu atendimento humano. O assistente continua disponível ` +
+        `caso ele siga escrevendo; assuma a conversa quando puder.`
     ).catch((e) => console.error('Falha ao notificar dono:', e.message));
   }
 }
