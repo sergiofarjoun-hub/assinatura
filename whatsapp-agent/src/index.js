@@ -23,7 +23,7 @@ const path = require('path');
 
 const config = require('./config');
 const store = require('./store');
-const { generateReply, extractIdentity } = require('./agent');
+const { generateReply, extractIdentity, updateFicha } = require('./agent');
 const media = require('./media');
 const clientes = require('./clientes');
 
@@ -227,6 +227,24 @@ async function respond(sock, jid, text, admin, msg) {
           'para localizar. NÃO afirme que localizou o cadastro.';
       }
     }
+
+    // MEMÓRIA DE LONGO PRAZO: se o cliente já está confirmado e localizado,
+    // injeta a ficha (_FICHA.md) como contexto — o agente "lembra" do cliente
+    // entre atendimentos e sabe a posição de claims/franquia dele.
+    if (profile.confirmed && config.fichaEnabled) {
+      const ficha = clientes.readFicha(profile);
+      if (ficha) {
+        systemNote =
+          '[SISTEMA] MEMÓRIA DO CLIENTE (ficha interna da Hamsa — use como contexto; ' +
+          'NÃO a leia literalmente ao cliente). Registra o histórico de interações e a ' +
+          'posição de claims e franquia deste cliente:\n\n' +
+          ficha +
+          '\n\nUse esses dados para responder com precisão. Se o cliente perguntar sobre ' +
+          'a posição da franquia, claims pendentes ou já processados, responda com base ' +
+          'nesta ficha. Deixe claro que o valor de franquia depende da confirmação (EOB) ' +
+          'da seguradora e que a posição OFICIAL é sempre a da seguradora.';
+      }
+    }
   }
 
   await sock.presenceSubscribe(jid).catch(() => {});
@@ -269,6 +287,24 @@ async function respond(sock, jid, text, admin, msg) {
         `\nO cliente pediu atendimento humano. O assistente continua disponível ` +
         `caso ele siga escrevendo; assuma a conversa quando puder.`
     ).catch((e) => console.error('Falha ao notificar dono:', e.message));
+  }
+
+  // MEMÓRIA DE LONGO PRAZO: atualiza o _FICHA.md do cliente na pasta da rede
+  // (histórico de TODA interação + controle de claims/franquia). Roda depois de
+  // responder, só para cliente já confirmado e localizado. Nunca derruba o fluxo.
+  if (!admin && config.fichaEnabled && clientes.enabled()) {
+    const prof = store.getProfile(jid);
+    if (prof.confirmed && clientes.resolveFolder(prof)) {
+      try {
+        const atual = clientes.readFicha(prof);
+        const nova = await updateFicha(atual, store.history(jid), attachment);
+        if (nova && clientes.writeFicha(prof, nova)) {
+          console.log(`Ficha atualizada: ${prof.nome}`);
+        }
+      } catch (e) {
+        console.error('Falha ao atualizar ficha do cliente:', e.message);
+      }
+    }
   }
 }
 

@@ -40,6 +40,11 @@ const config = {
   // Memória de conversa: quantas mensagens manter por chat
   maxHistory: parseInt(process.env.MAX_HISTORY || '40', 10),
 
+  // Memória de longo prazo por cliente (ficha _FICHA.md na pasta da rede,
+  // com resumo da relação + controle de claims/franquia). Requer CLIENTES_DIR.
+  // Defina FICHA_ENABLED=false para desligar.
+  fichaEnabled: (process.env.FICHA_ENABLED || 'true') !== 'false',
+
   // Pasta de dados (sessão do WhatsApp + histórico)
   dataDir: process.env.DATA_DIR || 'data',
 };

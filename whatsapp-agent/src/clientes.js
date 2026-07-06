@@ -249,4 +249,51 @@ function moveRetained(ref, profile) {
   return n;
 }
 
-module.exports = { enabled, resolveFolder, saveDocument, moveRetained, BASE };
+// ---------- Ficha / memória de longo prazo do cliente ----------
+// Arquivo _FICHA.md guardado NA PASTA do cliente (visível junto dos documentos).
+// Contém: resumo da relação, log de TODA interação, e o controle de claims
+// (valores, franquia por pessoa e familiar, status pendente/processado).
+const FICHA_FILE = process.env.FICHA_FILE || '_FICHA.md';
+
+// Caminho do _FICHA.md se — e somente se — o cadastro do cliente for localizado.
+function fichaPath(profile) {
+  if (!enabled()) return null;
+  const match = resolveFolder(profile || {});
+  if (!match) return null;
+  return path.join(match.path, FICHA_FILE);
+}
+
+// Lê a ficha atual do cliente (string vazia se não existir/não localizado).
+function readFicha(profile) {
+  const fp = fichaPath(profile);
+  if (!fp) return '';
+  try {
+    return fs.readFileSync(fp, 'utf8');
+  } catch {
+    return '';
+  }
+}
+
+// Grava/atualiza a ficha na pasta do cliente. Retorna true se gravou.
+function writeFicha(profile, content) {
+  const fp = fichaPath(profile);
+  if (!fp || !content) return false;
+  try {
+    fs.mkdirSync(path.dirname(fp), { recursive: true });
+    fs.writeFileSync(fp, content);
+    return true;
+  } catch (err) {
+    console.error('Falha ao gravar ficha do cliente:', err.message);
+    return false;
+  }
+}
+
+module.exports = {
+  enabled,
+  resolveFolder,
+  saveDocument,
+  moveRetained,
+  readFicha,
+  writeFicha,
+  BASE,
+};

@@ -155,4 +155,119 @@ async function extractIdentity(history) {
   }
 }
 
-module.exports = { generateReply, extractIdentity };
+// Modelo inicial da ficha, usado quando o cliente ainda não tem uma.
+const FICHA_TEMPLATE = `# Ficha do cliente
+
+## Dados
+- Titular:
+- Apólice:
+- Operadora:
+- Família / dependentes:
+- Contato (WhatsApp):
+
+## Resumo da relação
+(visão geral do cliente, preferências, observações relevantes)
+
+## Histórico de interações
+(registro de TODA interação com o cliente — uma linha por contato)
+| Data | Canal | Assunto | Resumo do que aconteceu |
+|------|-------|---------|-------------------------|
+
+## Claims / Reembolsos
+| Data | Paciente | Procedimento / Prestador | Valor cobrado | Aplicado à franquia | Pago | Status |
+|------|----------|--------------------------|---------------|---------------------|------|--------|
+
+## Posição da franquia
+- Por pessoa:
+- Familiar (agregada):
+(Só registre valor aplicado à franquia com base em EOB ou valor CONFIRMADO pela
+seguradora. Sem confirmação, deixe em branco ou marque "estimativa".)
+
+## Documentos recebidos
+| Data | Documento | Referente a |
+|------|-----------|-------------|
+
+## Pendências / próximos passos
+-
+`;
+
+// Mantém a ficha de memória de longo prazo do cliente. Recebe a ficha atual, a
+// conversa recente e (se houver) o documento anexo, e devolve a ficha
+// ATUALIZADA em Markdown. Nunca lança — em erro devolve null (ficha inalterada).
+async function updateFicha(currentFicha, history, media) {
+  const convo = history
+    .map((m) => `${m.role === 'user' ? 'Cliente' : 'Atendente'}: ${m.content}`)
+    .join('\n')
+    .slice(-6000);
+
+  const instruction =
+    'Você é o responsável por manter a FICHA de memória de um cliente da corretora ' +
+    'Hamsa (seguro-saúde internacional). A ficha fica salva na pasta do cliente e é ' +
+    'relida a cada atendimento: é a memória de longo prazo dele e o controle de claims.\n\n' +
+    'Receba a FICHA ATUAL e a CONVERSA RECENTE (e um documento anexo, se houver) e ' +
+    'devolva a FICHA ATUALIZADA em Markdown. Regras:\n' +
+    '- PRESERVE tudo o que já existe na ficha; apenas acrescente/atualize o que for novo. ' +
+    'Nunca apague histórico anterior.\n' +
+    '- Registre em "Histórico de interações" TODA e qualquer interação com o cliente: ' +
+    'uma linha por contato, com data, canal (WhatsApp), assunto e um resumo objetivo do ' +
+    'que aconteceu (o que o cliente pediu, o que foi respondido, documentos enviados).\n' +
+    '- Registre cada claim/reembolso como uma linha na tabela "Claims / Reembolsos" ' +
+    '(data, paciente, procedimento/prestador, valor cobrado, valor aplicado à franquia, ' +
+    'valor pago, status). Status: "pendente", "processado" ou "negado". Atualize o status ' +
+    'quando a conversa ou um documento indicar mudança.\n' +
+    '- FRANQUIA: só some/registre "aplicado à franquia" quando vier de um EOB ' +
+    '(Explanation of Benefits) ou valor CONFIRMADO pela seguradora. Caso contrário, deixe ' +
+    'em branco ou marque "estimativa". NUNCA invente números.\n' +
+    '- Some a franquia por pessoa e o total familiar em "Posição da franquia".\n' +
+    '- Se houver documento anexo (EOB, nota fiscal, recibo, pedido médico, relatório), ' +
+    'extraia dele os dados relevantes e registre em "Documentos recebidos" e, se for o ' +
+    'caso, na tabela de claims.\n' +
+    '- Seja conciso e factual. Sem conselhos, apenas o registro.\n' +
+    '- Responda SOMENTE com o Markdown da ficha, nada fora dela.\n\n' +
+    'Se a ficha atual estiver vazia, comece a partir deste modelo:\n\n' +
+    FICHA_TEMPLATE;
+
+  const content = [];
+  if (media) {
+    content.push(
+      media.kind === 'pdf'
+        ? {
+            type: 'document',
+            source: { type: 'base64', media_type: 'application/pdf', data: media.dataB64 },
+          }
+        : {
+            type: 'image',
+            source: { type: 'base64', media_type: media.mediaType, data: media.dataB64 },
+          }
+    );
+  }
+  content.push({
+    type: 'text',
+    text:
+      '=== FICHA ATUAL ===\n' +
+      (currentFicha || '(vazia — crie a partir do modelo)') +
+      '\n\n=== CONVERSA RECENTE ===\n' +
+      convo +
+      '\n\n=== FIM ===\nDevolva a ficha atualizada, completa, em Markdown.',
+  });
+
+  try {
+    const response = await client.messages.create({
+      model: config.model,
+      max_tokens: 3000,
+      system: instruction,
+      messages: [{ role: 'user', content }],
+    });
+    const text = response.content
+      .filter((b) => b.type === 'text')
+      .map((b) => b.text)
+      .join('\n')
+      .trim();
+    return text || null;
+  } catch (err) {
+    console.error('Falha ao atualizar ficha do cliente:', err.message);
+    return null;
+  }
+}
+
+module.exports = { generateReply, extractIdentity, updateFicha };
