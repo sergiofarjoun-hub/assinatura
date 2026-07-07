@@ -110,9 +110,11 @@ function main() {
   let n = 0;
   for (const [company, list] of byCompany) {
     const md = buildCompanyMd(company, list);
-    // prefixo "ma-" para NÃO sobrescrever as fichas detalhadas de PDF
-    // (ingest-produtos.js grava "<slug>.md"). As duas fontes se complementam.
-    const file = path.join(KB_DIR, `ma-${slugify(company)}.md`);
+    // uma pasta por seguradora no cofre; a ficha do MA convive com a de PDF
+    // ("Brochuras e Apólices.md") e com as suas notas ("Notas Hamsa.md").
+    const compDir = path.join(KB_DIR, company.replace(/[\/\\:]+/g, '-').trim());
+    fs.mkdirSync(compDir, { recursive: true });
+    const file = path.join(compDir, 'Cobertura (MA).md');
     fs.writeFileSync(file, md);
     const planos = new Set(list.map((r) => r.plan)).size;
     console.log(`✓ ${company}: ${list.length} itens, ${planos} plano(s) → ${file}`);

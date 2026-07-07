@@ -292,7 +292,8 @@ async function main() {
 
     const slug = slugify(carrier);
     const hash = carrierHash(pdfs);
-    const outFile = path.join(kbDir, `${slug}.md`);
+    // uma pasta por seguradora no cofre; nome de arquivo descritivo
+    const outFile = path.join(kbDir, carrier, 'Brochuras e Apólices.md');
     if (manifest[slug] === hash && fs.existsSync(outFile)) {
       console.log(`- ${carrier}: sem mudanças (${pdfs.length} PDFs) — pulado`);
       puladas++;
@@ -308,6 +309,7 @@ async function main() {
     try {
       const ficha = await distillCarrier(carrier, corpus);
       if (ficha && ficha.length > 50) {
+        fs.mkdirSync(path.dirname(outFile), { recursive: true });
         fs.writeFileSync(outFile, ficha + '\n');
         manifest[slug] = hash;
         saveManifest(kbDir, manifest);

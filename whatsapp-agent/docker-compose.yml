@@ -10,6 +10,9 @@ services:
       # Defina CLIENTES_HOST_DIR no .env com o caminho REAL no NAS
       # (ex.: /volume1/dados/CLIENTES). Dentro do container é sempre /clientes.
       - ${CLIENTES_HOST_DIR:?defina CLIENTES_HOST_DIR no .env}:/clientes
+      # Cofre de conhecimento (Obsidian) — o bot lê as fichas de produto daqui.
+      # Host no NAS: /volume1/SERVER/BASE_CONHECIMENTO (ajuste em .env se mudar).
+      - ${BASE_CONHECIMENTO_HOST_DIR:-/volume1/SERVER/BASE_CONHECIMENTO}:/base_conhecimento:ro
     logging:
       driver: json-file
       options:
