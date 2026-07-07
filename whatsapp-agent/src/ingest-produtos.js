@@ -25,7 +25,8 @@ const config = require('./config');
 
 const pdfParse = require('pdf-parse');
 
-const client = new Anthropic();
+// Timeout generoso e retries: as destilações são grandes e podem ser lentas.
+const client = new Anthropic({ timeout: 600000, maxRetries: 2 });
 
 const MAX_PDF_BYTES = 25 * 1024 * 1024; // ignora PDFs gigantes (provável scan/imagem)
 const MAX_FILES_PER_CARRIER = 40;
@@ -164,7 +165,8 @@ Regras:
 - Comece com um título "# <Seguradora>" e, para cada produto, um subtítulo "## <Produto>".`;
 
 async function distill(carrier, corpus) {
-  const resp = await client.messages.create({
+  // Streaming evita o timeout de requisições longas (recomendação da Anthropic).
+  const stream = client.messages.stream({
     model: config.model,
     max_tokens: 3000,
     system: SYSTEM,
@@ -179,6 +181,7 @@ async function distill(carrier, corpus) {
       },
     ],
   });
+  const resp = await stream.finalMessage();
   return resp.content
     .filter((b) => b.type === 'text')
     .map((b) => b.text)
