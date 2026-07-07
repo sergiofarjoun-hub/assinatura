@@ -29,7 +29,9 @@ const pdfParse = require('pdf-parse');
 const client = new Anthropic({ timeout: 600000, maxRetries: 2 });
 
 const MAX_PDF_BYTES = 25 * 1024 * 1024; // ignora PDFs gigantes (provável scan/imagem)
-const MAX_FILES_PER_CARRIER = 40;
+const MAX_FILES_PER_CARRIER = 150; // brochuras de todos os produtos + condições
+const PER_FILE_CHARS = 8000; // teto por arquivo (uma condição longa não domina tudo)
+const CHUNK_CHARS = 100000; // acima disso, quebra em partes e consolida
 
 function norm(s) {
   return (s || '')
@@ -58,7 +60,7 @@ function subdirs(dir) {
 
 // Versão da destilação. Suba quando mudar o prompt/params: entra no hash e força
 // reprocessar as seguradoras já em cache.
-const KB_VERSION = '2';
+const KB_VERSION = '3';
 
 // Acha, dentro da pasta da seguradora, as subpastas de foco (BROCHURAS,
 // APOLICES…). Casa por CONTEÚDO do nome (case/acentos-insensível), então
@@ -73,10 +75,11 @@ function focusPaths(carrierPath) {
   return out;
 }
 
-// Lista PDFs (recursivo, raso) dentro de um conjunto de pastas.
+// Lista PDFs (recursivo, raso) dentro de um conjunto de pastas. Marca os que
+// vêm de uma pasta de BROCHURAS (catálogo de produtos — prioridade na leitura).
 function collectPdfs(roots, depth = 3) {
   const out = [];
-  const walk = (dir, rel, d) => {
+  const walk = (dir, rel, d, isBro) => {
     let entries;
     try {
       entries = fs.readdirSync(dir, { withFileTypes: true });
@@ -88,18 +91,21 @@ function collectPdfs(roots, depth = 3) {
       const full = path.join(dir, e.name);
       const r = rel ? path.join(rel, e.name) : e.name;
       if (e.isDirectory()) {
-        if (d > 0) walk(full, r, d - 1);
+        if (d > 0) walk(full, r, d - 1, isBro);
       } else if (e.isFile() && e.name.toLowerCase().endsWith('.pdf')) {
         try {
           const st = fs.statSync(full);
-          out.push({ path: full, rel: r, size: st.size, mtimeMs: st.mtimeMs });
+          out.push({ path: full, rel: r, size: st.size, mtimeMs: st.mtimeMs, brochura: isBro });
         } catch {
           /* ignora */
         }
       }
     }
   };
-  for (const root of roots) walk(root, path.basename(root), depth);
+  for (const root of roots) {
+    const isBro = norm(path.basename(root)).includes('brochura');
+    walk(root, path.basename(root), depth, isBro);
+  }
   return out;
 }
 
@@ -124,69 +130,82 @@ async function extractText(file) {
   }
 }
 
-// Junta o texto dos PDFs (rotulado pelo nome do arquivo — o nome costuma
-// indicar o produto), respeitando o teto de caracteres.
+// Junta o texto dos PDFs num corpus. Brochuras primeiro (catálogo de produtos),
+// depois condições. Cada arquivo entra com teto (PER_FILE_CHARS) para uma
+// condição longa não engolir o orçamento e sufocar os demais produtos.
 async function buildCorpus(pdfs) {
+  const ordered = pdfs
+    .slice()
+    .sort((a, b) => (b.brochura ? 1 : 0) - (a.brochura ? 1 : 0) || a.rel.localeCompare(b.rel))
+    .slice(0, MAX_FILES_PER_CARRIER);
   const cap = config.produtosMaxChars;
   let total = 0;
   const parts = [];
-  for (const f of pdfs.slice(0, MAX_FILES_PER_CARRIER)) {
+  for (const f of ordered) {
     const txt = await extractText(f);
     if (!txt) continue;
-    const bloco = `\n\n===== ARQUIVO: ${f.rel} =====\n${txt}`;
-    if (total + bloco.length > cap) {
-      parts.push(bloco.slice(0, Math.max(0, cap - total)));
-      total = cap;
-      break;
-    }
+    const bloco = `\n\n===== ARQUIVO: ${f.rel} =====\n${txt.slice(0, PER_FILE_CHARS)}`;
+    if (total + bloco.length > cap) break;
     parts.push(bloco);
     total += bloco.length;
   }
   return parts.join('');
 }
 
-const SYSTEM = `Você organiza o conhecimento de PRODUTOS de seguro-saúde internacional (IPMI)
+const REGRAS_PRODUTO = `Regras cruciais:
+- A mesma seguradora costuma ter VÁRIOS produtos distintos (ex.: Universal/VIP,
+  Special, Direct, Senior, Absolute, planos só hospitalares, planos de migração).
+  ENUMERE CADA UM separadamente — nunca funda tudo num resumo só.
+- Cada produto é DIFERENTE: o que é COBERTO em um pode ser EXCLUÍDO em outro.
+  Nunca assuma que um benefício de um produto vale para os demais. Descreva a
+  cobertura E as exclusões DE CADA produto de forma independente e explícita;
+  quando um benefício existir num produto e não noutro, deixe isso claro.
+- Baseie-se APENAS no texto fornecido. Não invente valores nem coberturas. Se
+  algo não estiver claro, escreva "(não especificado nos materiais)".`;
+
+const SYSTEM_FICHA = `Você organiza o conhecimento de PRODUTOS de seguro-saúde internacional (IPMI)
 da corretora Hamsa, a partir de brochuras e condições das seguradoras.
 
-Você recebe o texto de vários documentos de UMA seguradora. Produza uma FICHA em
-Markdown que ENUMERA CADA PRODUTO/PLANO distinto que a seguradora oferece —
-NÃO misture tudo num resumo só. É comum a mesma seguradora ter:
-- um produto só HOSPITALAR (internação),
-- um produto COMPLETO (ambulatorial + hospitalar),
-- planos de substituição/migração (para "remover" um plano antigo),
-- variações por área de cobertura, faixa, franquia ou opção.
+Produza uma FICHA em Markdown que enumera CADA produto/plano da seguradora, com
+um subtítulo "## <Produto>" para cada. Para cada produto descreva, de forma
+concisa e factual: tipo (hospitalar / completo / etc.), o que cobre, o que NÃO
+cobre (exclusões), franquia/dedutível e opções, área de cobertura, carências,
+público-alvo e diferenciais.
 
-Para CADA produto/plano identificado, descreva de forma concisa e factual:
-- Nome do produto/plano (como aparece nos documentos);
-- Tipo (hospitalar / ambulatorial+hospitalar / completo / substituição/migração…);
-- O que cobre e o que NÃO cobre (principais coberturas e exclusões);
-- Franquia/dedutível e opções, se houver;
-- Área de cobertura (mundial, EUA incluído/excluído, Brasil…);
-- Carências relevantes;
-- Público-alvo e diferenciais.
+${REGRAS_PRODUTO}
 
-Regras:
-- Baseie-se APENAS no texto fornecido. Não invente valores nem coberturas.
-- Se algo não estiver claro nos documentos, escreva "(não especificado nos materiais)".
-- Seja objetivo: bullets curtos. Sem preâmbulo, só a ficha em Markdown.
-- Comece com um título "# <Seguradora>" e, para cada produto, um subtítulo "## <Produto>".`;
+Comece com "# <Seguradora>". Sem preâmbulo, só a ficha em Markdown. Bullets curtos.`;
 
-async function distill(carrier, corpus) {
-  // Streaming evita o timeout de requisições longas (recomendação da Anthropic).
+const SYSTEM_EXTRACT = `Você extrai PRODUTOS de seguro-saúde de um TRECHO dos materiais de uma
+seguradora (o trecho é parcial — não se preocupe com completude).
+
+Liste cada produto/plano distinto que aparecer no trecho, um bloco "## <Produto>"
+por produto, com os fatos presentes: tipo, coberturas, exclusões, franquia/opções,
+área, carências, diferenciais. Se o trecho não trouxer produto claro, responda só
+"(sem produto neste trecho)".
+
+${REGRAS_PRODUTO}
+
+Sem preâmbulo, só os blocos em Markdown.`;
+
+const SYSTEM_MERGE = `Você consolida notas parciais sobre os PRODUTOS de UMA seguradora (extraídas de
+vários trechos) numa FICHA final única em Markdown.
+
+Junte as notas do MESMO produto, elimine repetição e produza um bloco
+"## <Produto>" por produto distinto, com tipo, coberturas, exclusões,
+franquia/opções, área, carências, diferenciais.
+
+${REGRAS_PRODUTO}
+
+Comece com "# <Seguradora>". Sem preâmbulo, só a ficha final em Markdown.`;
+
+async function callClaude(system, userText, maxTokens = 6000) {
+  // Streaming evita timeout em requisições longas (recomendação da Anthropic).
   const stream = client.messages.stream({
     model: config.model,
-    max_tokens: 6000,
-    system: SYSTEM,
-    messages: [
-      {
-        role: 'user',
-        content:
-          `Seguradora: ${carrier}\n\n` +
-          'Documentos (texto extraído dos PDFs de brochuras/condições):\n' +
-          corpus +
-          '\n\nProduza a ficha da seguradora, com um bloco por produto/plano.',
-      },
-    ],
+    max_tokens: maxTokens,
+    system,
+    messages: [{ role: 'user', content: userText }],
   });
   const resp = await stream.finalMessage();
   return resp.content
@@ -194,6 +213,34 @@ async function distill(carrier, corpus) {
     .map((b) => b.text)
     .join('\n')
     .trim();
+}
+
+// Destila a seguradora inteira. Se o corpus couber num pedido, faz numa chamada;
+// se for grande, extrai produtos por parte e consolida (para não perder produtos).
+async function distillCarrier(carrier, corpus) {
+  if (corpus.length <= CHUNK_CHARS) {
+    return callClaude(
+      SYSTEM_FICHA,
+      `Seguradora: ${carrier}\n\nDocumentos:\n${corpus}\n\nProduza a ficha, um bloco por produto.`
+    );
+  }
+  // Quebra em partes e extrai produtos de cada uma
+  const chunks = [];
+  for (let i = 0; i < corpus.length; i += CHUNK_CHARS) chunks.push(corpus.slice(i, i + CHUNK_CHARS));
+  console.log(`    (material grande: ${chunks.length} partes → extrair + consolidar)`);
+  const partials = [];
+  for (let i = 0; i < chunks.length; i++) {
+    const p = await callClaude(
+      SYSTEM_EXTRACT,
+      `Seguradora: ${carrier} — trecho ${i + 1}/${chunks.length}\n\n${chunks[i]}`
+    );
+    if (p && !/^\(sem produto/i.test(p)) partials.push(p);
+  }
+  if (!partials.length) return null;
+  return callClaude(
+    SYSTEM_MERGE,
+    `Seguradora: ${carrier}\n\nNotas parciais dos produtos:\n\n${partials.join('\n\n=====\n\n')}`
+  );
 }
 
 function loadManifest(kbDir) {
@@ -259,7 +306,7 @@ async function main() {
       continue;
     }
     try {
-      const ficha = await distill(carrier, corpus);
+      const ficha = await distillCarrier(carrier, corpus);
       if (ficha && ficha.length > 50) {
         fs.writeFileSync(outFile, ficha + '\n');
         manifest[slug] = hash;

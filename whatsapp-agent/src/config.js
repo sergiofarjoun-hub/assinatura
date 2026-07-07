@@ -61,7 +61,7 @@ const config = {
     .map((s) => s.trim())
     .filter(Boolean),
   produtosKbDir: process.env.PRODUTOS_KB_DIR || path.join('data', 'produtos'),
-  produtosMaxChars: parseInt(process.env.PRODUTOS_MAX_CHARS || '120000', 10),
+  produtosMaxChars: parseInt(process.env.PRODUTOS_MAX_CHARS || '300000', 10),
   // Filtro opcional de seguradoras (vírgula). Vazio = todas as pastas.
   produtosCarriers: (process.env.PRODUTOS_CARRIERS || '')
     .split(',')
