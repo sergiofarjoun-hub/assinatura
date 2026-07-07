@@ -47,6 +47,18 @@ const config = {
 
   // Pasta de dados (sessão do WhatsApp + histórico)
   dataDir: process.env.DATA_DIR || 'data',
+
+  // Notificação por e-mail quando um documento é arquivado (quem submeteu).
+  // Requer SMTP_* e NOTIFY_EMAIL; sem eles, o recurso fica desligado.
+  notifyEmail: process.env.NOTIFY_EMAIL || '',
+  smtp: {
+    host: process.env.SMTP_HOST || '',
+    port: parseInt(process.env.SMTP_PORT || '587', 10),
+    secure: (process.env.SMTP_SECURE || 'false') === 'true', // true = porta 465
+    user: process.env.SMTP_USER || '',
+    pass: process.env.SMTP_PASS || '',
+    from: process.env.SMTP_FROM || process.env.SMTP_USER || '',
+  },
 };
 
 if (!process.env.ANTHROPIC_API_KEY) {

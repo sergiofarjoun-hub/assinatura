@@ -26,6 +26,7 @@ const store = require('./store');
 const { generateReply, extractIdentity, updateFicha } = require('./agent');
 const media = require('./media');
 const clientes = require('./clientes');
+const mailer = require('./mailer');
 
 const logger = pino({ level: process.env.LOG_LEVEL || 'warn' });
 
@@ -193,12 +194,14 @@ async function respond(sock, jid, text, admin, msg) {
     // salva documento recebido (só arquiva no cliente se já confirmado)
     if (attachment) {
       const saved = clientes.saveDocument(profile, attachment, numberOf(jid));
-      if (saved && saved.identified) {
-        console.log(`Documento salvo: ${saved.path}`);
-      } else if (saved) {
-        console.log(`Documento em retenção: ${saved.path}`);
-        // só avisa o dono se realmente não há cadastro correspondente
-        if (!clientes.resolveFolder(profile)) {
+      if (saved) {
+        console.log(
+          `${saved.identified ? 'Documento salvo' : 'Documento em retenção'}: ${saved.path}`
+        );
+        // e-mail ao dono informando QUEM submeteu o documento (todo arquivamento)
+        emailDocSaved(profile, attachment, jid, saved);
+        // se não há cadastro correspondente, avisa também no WhatsApp
+        if (!saved.identified && !clientes.resolveFolder(profile)) {
           await notifyOwner(
             sock,
             `📎 Documento recebido de ${numberOf(jid)}, mas o cadastro do cliente ` +
@@ -307,6 +310,34 @@ async function respond(sock, jid, text, admin, msg) {
       }
     }
   }
+}
+
+// E-mail ao dono a cada documento arquivado, informando QUEM submeteu.
+// Fire-and-forget: não bloqueia a resposta ao cliente nem derruba o fluxo.
+function emailDocSaved(profile, attachment, jid, saved) {
+  if (!mailer.enabled()) return;
+  const p = profile || {};
+  const quem = p.nome || '(não identificado)';
+  const tipo = attachment.kind === 'pdf' ? 'PDF' : 'imagem';
+  const linhas = [
+    'Um documento foi recebido e arquivado pelo assistente de WhatsApp.',
+    '',
+    `Cliente: ${quem}`,
+    p.operadora ? `Operadora: ${p.operadora}` : null,
+    p.apolice ? `Apólice: ${p.apolice}` : null,
+    `WhatsApp: ${numberOf(jid)}`,
+    `Assunto: ${p.assunto || '(não informado)'}`,
+    `Documento: ${tipo}${attachment.filename ? ' — ' + attachment.filename : ''}`,
+    `Situação: ${
+      saved.identified
+        ? 'arquivado na pasta do cliente'
+        : 'retenção (_a_identificar) — cliente ainda não confirmado'
+    }`,
+    `Local: ${saved.path}`,
+  ].filter(Boolean);
+  mailer
+    .sendMail(`[Hamsa Bot] Documento recebido — ${quem}`, linhas.join('\n'))
+    .catch(() => {});
 }
 
 // Envia um aviso ao dono (chat "você mesmo" e/ou números ADMIN configurados).
