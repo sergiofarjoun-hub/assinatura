@@ -91,7 +91,45 @@ function loadProdutos() {
   );
 }
 
-const KNOWLEDGE = loadKnowledge() + loadProdutos();
+// Conhecimento recarregável: revê o cofre a cada KNOWLEDGE_POLL_MS e só
+// reconstrói quando algum .md muda (assinatura por lista de arquivos + mtime).
+// Assim, editar notas no Obsidian passa a valer sem reiniciar o bot.
+const POLL_MS = parseInt(process.env.KNOWLEDGE_POLL_MS || '30000', 10);
+let kbCache = { sig: null, text: '', checkedAt: 0 };
+
+function vaultSignature() {
+  const dir = process.env.PRODUTOS_KB_DIR || path.join(__dirname, '..', 'data', 'produtos');
+  const files = listMarkdown(dir);
+  let sig = String(files.length);
+  for (const f of files) {
+    try {
+      sig += `|${f}:${fs.statSync(f).mtimeMs}`;
+    } catch {
+      /* ignora */
+    }
+  }
+  // inclui também o conhecimento.md base
+  try {
+    const kf = path.join(__dirname, '..', 'conhecimento.md');
+    sig += `|base:${fs.statSync(kf).mtimeMs}`;
+  } catch {
+    /* ignora */
+  }
+  return sig;
+}
+
+function currentKnowledge() {
+  const now = Date.now();
+  if (kbCache.sig !== null && now - kbCache.checkedAt < POLL_MS) return kbCache.text;
+  kbCache.checkedAt = now;
+  const sig = vaultSignature();
+  if (sig !== kbCache.sig) {
+    kbCache.sig = sig;
+    kbCache.text = loadKnowledge() + loadProdutos();
+    if (kbCache.text) console.log('Base de conhecimento (re)carregada do cofre.');
+  }
+  return kbCache.text;
+}
 
 const CLIENT_PROMPT = `Você é o assistente virtual da Hamsa, corretora de seguros especializada em
 seguro-saúde internacional (IPMI — International Private Medical Insurance) e seguros para
@@ -268,7 +306,12 @@ COMO AJUDAR
 - Pode opinar e recomendar; ele é corretor licenciado e decide o que usar.
 - Responda no idioma em que ele escrever (normalmente português).`;
 
-module.exports = {
-  CLIENT_PROMPT: CLIENT_PROMPT + KNOWLEDGE,
-  ADMIN_PROMPT: ADMIN_PROMPT + KNOWLEDGE,
-};
+// Getters: montam o prompt com o conhecimento ATUAL do cofre (auto-recarregado).
+function getClientPrompt() {
+  return CLIENT_PROMPT + currentKnowledge();
+}
+function getAdminPrompt() {
+  return ADMIN_PROMPT + currentKnowledge();
+}
+
+module.exports = { getClientPrompt, getAdminPrompt };

@@ -3,7 +3,7 @@
 
 const Anthropic = require('@anthropic-ai/sdk');
 const config = require('./config');
-const { CLIENT_PROMPT, ADMIN_PROMPT } = require('./prompts');
+const { getClientPrompt, getAdminPrompt } = require('./prompts');
 
 const client = new Anthropic(); // lê ANTHROPIC_API_KEY do ambiente
 
@@ -20,7 +20,7 @@ const FALLBACK_ADMIN = '⚠️ Não consegui gerar resposta (veja os logs do age
  * @returns {Promise<string>} texto da resposta
  */
 async function generateReply(history, admin, media, systemNote) {
-  const systemPrompt = admin ? ADMIN_PROMPT : CLIENT_PROMPT;
+  const systemPrompt = admin ? getAdminPrompt() : getClientPrompt();
   const systemBlocks = [
     { type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } },
   ];
