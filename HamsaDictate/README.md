@@ -76,6 +76,17 @@ O download/gestão do modelo (o "ModelDownloader" do esboço) vive dentro de `Wh
 ## Roadmap (do esboço)
 
 - **Fase 2 — concluída:** settings completo (hotkey por presets, device de áudio, troca de modelo em runtime), modos toggle e tap-or-hold, overlay com waveform, histórico de 20. Detalhes e decisões: [`docs/PLANO-FASE-2.md`](docs/PLANO-FASE-2.md).
-- **Fase 3:** vocabulário Hamsa no prompt do Whisper (IPMI, VUMI, SUSEP, GeoBlue, apólice, carência, CPT…), pós-processamento com LLM local, engine Parakeet v3 (FluidAudio) e modo "ditar e-mail".
+- **Fase 3 — em progresso:** limpeza opcional do texto por LLM local via **Ollama** (endpoint OpenAI-compatible, com fallback para o texto cru), vocabulário Hamsa nas duas camadas (prompt do Whisper + prompt de limpeza), contexto do app em foco via Accessibility e modo "ditar e-mail". Pesquisa que embasou a fase: [`docs/PESQUISA-WISPRFLOW.md`](docs/PESQUISA-WISPRFLOW.md); plano e status: [`docs/PLANO-FASE-3.md`](docs/PLANO-FASE-3.md). Falta avaliar o engine Parakeet v3 (FluidAudio) por latência.
 
 Esboço completo: [`docs/ESBOCO.md`](docs/ESBOCO.md).
+
+### Fase 3: pré-requisito do Ollama
+
+A limpeza com IA é **opcional e vem desligada**. Para usá-la:
+
+```bash
+brew install ollama
+ollama pull gemma3:4b     # ou llama3.2:3b / qwen2.5:3b
+```
+
+Com o Ollama rodando, ligue "Limpeza com IA" nas Configurações. Se ele estiver fora do ar, o app insere a transcrição crua normalmente.

@@ -22,6 +22,7 @@ final class DictationController: ObservableObject {
         case idle
         case recording
         case transcribing
+        case refining
         case error(String)
 
         var symbolName: String {
@@ -31,6 +32,7 @@ final class DictationController: ObservableObject {
             case .idle: return "mic"
             case .recording: return "mic.fill"
             case .transcribing: return "waveform"
+            case .refining: return "sparkles"
             case .error: return "exclamationmark.triangle"
             }
         }
@@ -43,6 +45,7 @@ final class DictationController: ObservableObject {
             case .idle: return "Pronto para ditar"
             case .recording: return "Gravando…"
             case .transcribing: return "Transcrevendo…"
+            case .refining: return "Refinando com IA…"
             case let .error(message): return message
             }
         }
@@ -58,9 +61,14 @@ final class DictationController: ObservableObject {
     let permissions = PermissionsManager()
     let settings = AppSettings.shared
 
+    /// `true` quando o Ollama respondeu ao último health-check (só informativo
+    /// para a UI; o refino se autodefende de qualquer forma).
+    @Published private(set) var refinementAvailable = false
+
     private let recorder = AudioRecorder()
     private let inserter = TextInserter()
     private let hotkeys = HotkeyManager()
+    private let refiner = TextRefiner()
     private var engine: TranscriptionEngine
     private var engineVariant: String
     private let settingsWindow = SettingsWindow()
@@ -263,10 +271,20 @@ final class DictationController: ObservableObject {
         status = .transcribing
         let language = TranscriptionLanguage(rawValue: settings.language)?.whisperCode ?? "pt"
         let engine = engine
+        let vocabulary = settings.customVocabulary
+        let refineEnabled = settings.refinementEnabled
 
         Task { [weak self] in
             do {
-                let text = try await engine.transcribe(samples: samples, language: language)
+                let raw = try await engine.transcribe(
+                    samples: samples, language: language, prompt: vocabulary
+                )
+                let text: String
+                if refineEnabled, let self {
+                    text = await self.refine(raw)
+                } else {
+                    text = raw
+                }
                 await MainActor.run { self?.deliver(text) }
             } catch {
                 await MainActor.run {
@@ -274,6 +292,36 @@ final class DictationController: ObservableObject {
                 }
             }
         }
+    }
+
+    /// Etapa de limpeza (Fase 3). Só entra na rede se o Ollama estiver no ar;
+    /// devolve o texto cru em qualquer falha ou timeout — nunca bloqueia.
+    private func refine(_ raw: String) async -> String {
+        guard !raw.isEmpty else { return raw }
+
+        guard await refiner.isAvailable(endpoint: settings.refinementEndpoint) else {
+            refinementAvailable = false
+            return raw
+        }
+        refinementAvailable = true
+        status = .refining
+
+        // Captura o contexto do app alvo antes do hop de rede (o campo ainda
+        // está focado: o overlay é não-ativador).
+        let context: String? = settings.contextAwareRefinement
+            ? AppContextReader.capture().promptString
+            : nil
+
+        let request = RefinementRequest(
+            text: raw,
+            systemPrompt: settings.refineStyle.systemPrompt,
+            model: settings.refinementModel,
+            endpoint: settings.refinementEndpoint,
+            timeout: settings.refinementTimeout,
+            vocabulary: settings.customVocabulary,
+            appContext: context
+        )
+        return await refiner.refine(request)
     }
 
     private func deliver(_ text: String) {
@@ -315,11 +363,27 @@ final class DictationController: ObservableObject {
             return
         }
         switch status {
-        case .recording, .transcribing:
+        case .recording, .transcribing, .refining:
             overlay.show(controller: self)
         default:
             overlay.hide()
         }
+    }
+
+    /// Re-checa se o Ollama está no ar (chamado ao abrir as Settings).
+    func refreshRefinementAvailability() {
+        Task { [weak self] in
+            guard let self else { return }
+            let available = await self.refiner.isAvailable(endpoint: self.settings.refinementEndpoint)
+            self.refinementAvailable = available
+        }
+    }
+
+    /// Alterna entre limpeza padrão e formatação de e-mail (atalho do menu).
+    func toggleEmailStyle() {
+        settings.refineStyleRaw = settings.refineStyle == .email
+            ? RefineStyle.cleanup.rawValue
+            : RefineStyle.email.rawValue
     }
 
     func showSettings() {

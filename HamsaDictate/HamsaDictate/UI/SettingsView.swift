@@ -68,6 +68,52 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
             }
 
+            Section("Limpeza com IA (Ollama)") {
+                Toggle("Refinar o texto com um LLM local", isOn: $settings.refinementEnabled)
+
+                if settings.refinementEnabled {
+                    HStack(spacing: 8) {
+                        Image(systemName: controller.refinementAvailable ? "checkmark.circle.fill" : "exclamationmark.triangle")
+                            .foregroundStyle(controller.refinementAvailable ? .green : .orange)
+                        Text(controller.refinementAvailable
+                             ? "Ollama conectado."
+                             : "Ollama não respondeu — o texto cru é usado até ele voltar.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Picker("Estilo", selection: $settings.refineStyleRaw) {
+                        ForEach(RefineStyle.allCases) { style in
+                            Text(style.label).tag(style.rawValue)
+                        }
+                    }
+
+                    Picker("Modelo do Ollama", selection: $settings.refinementModel) {
+                        Text("gemma3:4b").tag("gemma3:4b")
+                        Text("llama3.2:3b").tag("llama3.2:3b")
+                        Text("qwen2.5:3b").tag("qwen2.5:3b")
+                    }
+
+                    TextField("Endereço do Ollama", text: $settings.refinementEndpoint)
+                        .textFieldStyle(.roundedBorder)
+
+                    Toggle("Usar contexto do app em foco (Acessibilidade)", isOn: $settings.contextAwareRefinement)
+
+                    Text("Requer o Ollama rodando: `ollama pull \(settings.refinementModel)`. Se ele estiver fora do ar ou demorar mais que \(Int(settings.refinementTimeout)) s, o texto cru da transcrição é inserido.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            Section("Vocabulário do domínio") {
+                Text("Termos preservados na transcrição e na limpeza (separados por vírgula ou linha).")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                TextEditor(text: $settings.customVocabulary)
+                    .frame(height: 72)
+                    .font(.system(.caption, design: .monospaced))
+            }
+
             Section("Modelo de transcrição") {
                 Picker("Modelo", selection: $settings.modelVariant) {
                     ForEach(AppSettings.modelOptions) { option in
@@ -99,6 +145,7 @@ struct SettingsView: View {
         .frame(width: 480, height: 560)
         .onAppear {
             controller.permissions.refresh()
+            controller.refreshRefinementAvailability()
             inputDevices = AudioDeviceManager.inputDevices()
         }
         .onReceive(permissionPoll) { _ in

@@ -57,6 +57,17 @@ struct MenuBarView: View {
                 .frame(maxHeight: 220)
             }
 
+            if controller.settings.refinementEnabled {
+                Divider()
+                Toggle(isOn: Binding(
+                    get: { controller.settings.refineStyle == .email },
+                    set: { _ in controller.toggleEmailStyle() }
+                )) {
+                    Label("Ditar como e-mail", systemImage: "envelope")
+                }
+                .toggleStyle(.checkbox)
+            }
+
             Divider()
 
             Button("Configurações…") {
@@ -90,6 +101,7 @@ struct MenuBarView: View {
         switch controller.status {
         case .recording: return .red
         case .transcribing: return .orange
+        case .refining: return .purple
         case .error: return .yellow
         default: return .primary
         }

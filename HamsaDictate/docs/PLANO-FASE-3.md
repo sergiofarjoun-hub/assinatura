@@ -1,8 +1,17 @@
 # Plano — Fase 3 (Diferencial Hamsa) do HamsaDictate
 
-> Status: **planejada** (jul/2026). Funde a Fase 3 do [ESBOCO.md](ESBOCO.md) com as descobertas
-> da pesquisa sobre o Wispr Flow ([PESQUISA-WISPRFLOW.md](PESQUISA-WISPRFLOW.md)).
+> Status: **em progresso** (jul/2026). Itens 1–4 implementados; item 5 (Parakeet) só após medir
+> latência. Funde a Fase 3 do [ESBOCO.md](ESBOCO.md) com as descobertas da pesquisa sobre o
+> Wispr Flow ([PESQUISA-WISPRFLOW.md](PESQUISA-WISPRFLOW.md)).
 > Pré-requisito: MVP + Fase 2 mergeados (PR #11) e validados no Mac.
+>
+> **O que entrou em código:** `Core/TextRefiner.swift` (cliente Ollama), `Support/AppContextReader.swift`
+> (contexto via AX), vocabulário no `Core/TranscriptionEngine.swift` (promptTokens do Whisper) e no
+> prompt de limpeza, estado `.refining` + etapa `refine()` no `DictationController.swift`, seções
+> "Limpeza com IA" e "Vocabulário do domínio" no `SettingsView.swift`, toggle "Ditar como e-mail"
+> no `MenuBarView.swift`, e os campos correspondentes em `Models/AppSettings.swift`. Nenhuma
+> dependência nova (usa `URLSession`). Nota: o timeout padrão ficou em **8 s** (configurável), não
+> 2 s — em CPU 2 s cairia sempre no fallback; medir e ajustar no Mac.
 
 ## O que a pesquisa mudou no plano
 
@@ -28,51 +37,51 @@ tecla ao texto no cursor para ditados curtos; etapa LLM alvo **< 400 ms** para ~
 
 ### 1. Pós-processamento com LLM local via Ollama
 
-Novo `Core/TextRefiner.swift`:
+✅ Implementado em `Core/TextRefiner.swift`:
 
-- `POST http://localhost:11434/v1/chat/completions` (URLSession, sem SDK), `temperature: 0`,
-  `stream: false`.
-- Health-check no launch e antes de cada uso (`GET /api/tags`, timeout curto). Ollama fora do ar
-  → pill "Limpeza: off" no menu e transcrição crua segue normal.
-- Timeout da limpeza: 2 s (configurável). Estourou → usa o texto cru.
-- **Modelo padrão: `gemma3:4b`** (o que o local-whisper usa em produção para o mesmo caso);
-  alternativas no picker: `llama3.2:3b` e `qwen2.5:3b`. Head-to-head em PT-BR é questão em aberto
-  da pesquisa — o picker existe para testarmos com ditados reais.
-- Prompt de limpeza **editável nas Settings** (padrão FreeFlow), com default focado em PT-BR:
-  pontuação, capitalização, remoção de muletas ("éé", "né", "tipo"), aplicação de autocorreções
-  faladas ("aliás", "quer dizer"), números e listas formatados. Nunca responder ao conteúdo,
-  nunca adicionar informação — só reescrever.
-- Settings ganha seção "Limpeza com IA": on/off (default **off** até validarmos), modelo, prompt,
-  timeout. Overlay mostra "Refinando…" após "Transcrevendo…".
+- `POST {endpoint}/v1/chat/completions` (URLSession, sem SDK), `temperature: 0`, `stream: false`.
+- Health-check `GET /api/tags` (timeout 1,5 s) antes de cada uso e ao abrir as Settings. Ollama
+  fora do ar → indicador laranja nas Settings e transcrição crua segue normal.
+- Timeout da limpeza: **8 s** por padrão (configurável). Estourou → usa o texto cru. (O plano
+  original previa 2 s; em CPU isso cairia sempre no fallback — subimos e deixamos ajustável.)
+- **Modelo padrão: `gemma3:4b`**; alternativas no picker: `llama3.2:3b` e `qwen2.5:3b`. Head-to-head
+  em PT-BR é questão em aberto da pesquisa — o picker existe para testarmos com ditados reais.
+- Prompt de limpeza por estilo (`RefineStyle` em `AppSettings`), default PT-BR: pontuação,
+  capitalização, remoção de muletas, autocorreções faladas, números e listas. Nunca responde ao
+  conteúdo nem adiciona informação — só reescreve.
+- Settings tem a seção "Limpeza com IA": on/off (default **off**), estilo, modelo, endereço do
+  Ollama e contexto. Overlay mostra "Refinando…" após "Transcrevendo…".
+- _Pendente:_ editor livre do prompt de sistema (hoje é fixo por estilo) e slider de timeout na UI.
 
-### 2. Vocabulário Hamsa
+### 2. Vocabulário Hamsa ✅
 
-Duas camadas, mesma lista de termos (IPMI, VUMI, SUSEP, GeoBlue, apólice, sinistro, carência,
-CPT, multicálculo, resseguro…):
+Duas camadas, mesma lista de termos (default: IPMI, VUMI, SUSEP, GeoBlue, Bupa, Cigna, apólice,
+sinistro, carência, CPT, resseguro, corretora, prêmio, franquia, coparticipação, multicálculo, Hamsa):
 
-- **No Whisper:** lista injetada como `promptText` da `DecodingOptions` do WhisperKit — melhora a
-  grafia já na transcrição.
+- **No Whisper:** injetada como `promptTokens` da `DecodingOptions` (tokeniza o texto e descarta
+  tokens especiais, `usePrefillPrompt = true`) — melhora a grafia já na transcrição.
 - **No prompt de limpeza:** "termos do domínio que devem ser preservados/corrigidos para esta
   grafia" — pega o que o Whisper errar.
-- Lista editável nas Settings (um termo por linha), persistida em `AppSettings`.
+- Editável na seção "Vocabulário do domínio" das Settings, persistida em `AppSettings`.
 
-### 3. Contexto do app alvo (padrão FreeFlow)
+### 3. Contexto do app alvo (padrão FreeFlow) ✅
 
-Novo `Support/AppContextReader.swift`:
+Implementado em `Support/AppContextReader.swift`:
 
-- Via AX: `AXUIElementCopyAttributeValue` do elemento focado → `kAXValueAttribute` /
-  `kAXSelectedTextRangeAttribute` para capturar ~500 caracteres ao redor do cursor + nome do app
-  frontmost (`NSWorkspace.frontmostApplication`).
-- Entra no prompt de limpeza como contexto ("o usuário está ditando em Mail, texto próximo: …")
-  para grafia de nomes e ajuste de tom.
+- Via AX: elemento focado do sistema (`AXUIElementCreateSystemWide` → `kAXFocusedUIElementAttribute`
+  → `kAXValueAttribute`), capturando os últimos ~500 caracteres + nome do app frontmost
+  (`NSWorkspace.frontmostApplication`).
+- Entra no prompt de limpeza como contexto (ligável por toggle nas Settings).
 - Falhou a leitura AX (apps que não expõem) → segue sem contexto, silenciosamente.
-- Limitar o contexto injetado para não estourar a régua de latência (questão em aberto: medir).
+- _Nota:_ captura o valor do campo focado; refinamentos como janela de seleção (`kAXSelectedTextRange`)
+  ficam para depois, se necessário.
 
-### 4. Modo "ditar e-mail"
+### 4. Modo "ditar e-mail" ✅
 
-- Quarto preset de comportamento, ativável por atalho alternativo ou toggle no menu: troca o
-  prompt de limpeza por um de formatação de e-mail profissional PT-BR (saudação, parágrafos,
-  fecho), mantendo o conteúdo ditado.
+- Estilo alternativo de limpeza (`RefineStyle.email`), alternável pelo toggle "Ditar como e-mail"
+  no menu (aparece quando a limpeza está ligada) ou pelo picker de estilo nas Settings: troca o
+  prompt por um de formatação de e-mail profissional PT-BR (saudação, parágrafos, fecho), mantendo
+  o conteúdo ditado. _Pendente:_ atalho global dedicado (hoje é toggle, não hotkey próprio).
 - Combina com o contexto do item 3 quando o app alvo é Mail/Outlook/Gmail no navegador.
 
 ### 5. Engine Parakeet v3 (baixa latência) — opcional, avaliar por último
