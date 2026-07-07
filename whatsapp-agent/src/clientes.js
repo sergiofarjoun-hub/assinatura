@@ -288,6 +288,66 @@ function writeFicha(profile, content) {
   }
 }
 
+// ---------- Busca de documentos na pasta do cliente (envio sob aprovação) ----------
+// Sinônimos para casar pedidos comuns com nomes de arquivo variados.
+const DOC_SYNONYMS = {
+  id: ['id', 'card', 'carteirinha', 'cartao', 'idcard'],
+  card: ['card', 'id', 'carteirinha', 'cartao'],
+  carteirinha: ['carteirinha', 'cartao', 'id', 'card'],
+  cartao: ['cartao', 'carteirinha', 'id', 'card'],
+  apolice: ['apolice', 'policy', 'poliza', 'certificate', 'certificado'],
+  policy: ['policy', 'apolice', 'poliza'],
+  reembolso: ['reembolso', 'claim', 'claims', 'eob'],
+  claim: ['claim', 'claims', 'reembolso', 'eob'],
+  fatura: ['fatura', 'invoice', 'nota', 'recibo'],
+  invoice: ['invoice', 'fatura', 'nota', 'recibo'],
+  comprovante: ['comprovante', 'proof', 'payment', 'pagamento', 'recibo'],
+};
+
+function docSynonyms(tokens) {
+  const set = new Set(tokens);
+  for (const t of tokens) (DOC_SYNONYMS[t] || []).forEach((s) => set.add(s));
+  return [...set].filter(Boolean);
+}
+
+// Percorre arquivos da pasta do cliente até `depth` níveis, ignorando ocultos
+// e lixo do sistema (@eaDir, #recycle, .DS_Store).
+function walkFiles(dir, depth, cb, rel) {
+  let entries;
+  try {
+    entries = fs.readdirSync(dir, { withFileTypes: true });
+  } catch {
+    return;
+  }
+  for (const e of entries) {
+    if (e.name.startsWith('.') || e.name === '@eaDir' || e.name === '#recycle') continue;
+    const full = path.join(dir, e.name);
+    if (e.isDirectory()) {
+      if (depth > 0) walkFiles(full, depth - 1, cb, rel ? path.join(rel, e.name) : e.name);
+    } else if (e.isFile()) {
+      cb(full, rel || '', e.name);
+    }
+  }
+}
+
+// Encontra arquivos na pasta do cliente que casam com o termo pedido. Só para
+// cliente localizado (resolveFolder). Retorna [{ path, name, rel }] até `limit`.
+function findDocuments(profile, query, limit = 8) {
+  if (!enabled()) return [];
+  const match = resolveFolder(profile || {});
+  if (!match) return [];
+  const qtokens = norm(query).split(' ').filter(Boolean);
+  if (!qtokens.length) return [];
+  const terms = docSynonyms(qtokens);
+  const out = [];
+  walkFiles(match.path, 2, (full, rel, name) => {
+    // casa contra o nome do arquivo E a subpasta (ex.: "reembolso" acha _CLAIMS)
+    const hay = norm(`${rel} ${name}`);
+    if (terms.some((t) => hay.includes(t))) out.push({ path: full, name, rel });
+  });
+  return out.slice(0, limit);
+}
+
 module.exports = {
   enabled,
   resolveFolder,
@@ -295,5 +355,6 @@ module.exports = {
   moveRetained,
   readFicha,
   writeFicha,
+  findDocuments,
   BASE,
 };

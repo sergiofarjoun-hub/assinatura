@@ -20,6 +20,7 @@ const {
 const pino = require('pino');
 const qrcode = require('qrcode-terminal');
 const path = require('path');
+const fs = require('fs');
 
 const config = require('./config');
 const store = require('./store');
@@ -42,6 +43,29 @@ function rememberSent(id) {
       if (sentByBot.size <= 1000) break;
     }
   }
+}
+
+// Documentos aguardando aprovação do dono para envio ao cliente.
+// token -> { jid (cliente), path, name }. Em memória (aprovação é efêmera).
+const pendingSends = new Map();
+function newToken() {
+  return Math.random().toString(36).slice(2, 8);
+}
+function mimeFor(name) {
+  const ext = (name.split('.').pop() || '').toLowerCase();
+  const m = {
+    pdf: 'application/pdf',
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    png: 'image/png',
+    webp: 'image/webp',
+    gif: 'image/gif',
+    doc: 'application/msword',
+    docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    xls: 'application/vnd.ms-excel',
+    xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  };
+  return m[ext] || 'application/octet-stream';
 }
 
 // fila por chat: evita respostas concorrentes na mesma conversa
@@ -95,6 +119,7 @@ const HELP = [
   '!pausar <numero> — pausa o bot num chat de cliente',
   '!ativar <numero> — reativa o bot num chat',
   '!limpar [numero|tudo] — apaga histórico (sem número: deste chat)',
+  '!enviar <token> — envia ao cliente um documento que ele pediu (aprovação)',
 ].join('\n');
 
 async function handleCommand(sock, jid, text) {
@@ -138,6 +163,25 @@ async function handleCommand(sock, jid, text) {
       }
       store.clearHistory(argJid || jid);
       return sendText(sock, jid, `Histórico apagado (${arg || 'este chat'}).`);
+
+    case 'enviar': {
+      const token = (args[0] || '').trim();
+      const pend = token && pendingSends.get(token);
+      if (!pend) return sendText(sock, jid, `Token inválido ou já usado: ${token || '(vazio)'}`);
+      try {
+        const buf = fs.readFileSync(pend.path);
+        const mime = mimeFor(pend.name);
+        const msg = mime.startsWith('image/')
+          ? { image: buf, mimetype: mime }
+          : { document: buf, mimetype: mime, fileName: pend.name };
+        const sent = await sock.sendMessage(pend.jid, msg);
+        rememberSent(sent?.key?.id);
+        pendingSends.delete(token);
+        return sendText(sock, jid, `✅ Enviado a ${numberOf(pend.jid)}: ${pend.name}`);
+      } catch (err) {
+        return sendText(sock, jid, `Falha ao enviar (${pend.name}): ${err.message}`);
+      }
+    }
 
     default:
       return sendText(sock, jid, `Comando desconhecido: !${cmd}\n\n${HELP}`);
@@ -261,7 +305,11 @@ async function respond(sock, jid, text, admin, msg) {
   //  [[CLIENTE_CONFIRMADO]] -> cliente confirmou o cadastro (arquiva documentos)
   const wantsConcierge = !admin && raw.includes('[[HANDOFF]]');
   const clienteConfirmado = !admin && raw.includes('[[CLIENTE_CONFIRMADO]]');
-  let reply = raw.replace(/\s*\[\[(HANDOFF|CLIENTE_CONFIRMADO)\]\]\s*/g, '').trim();
+  const docMatch = !admin ? raw.match(/\[\[SOLICITA_DOC:\s*([^\]]+)\]\]/i) : null;
+  let reply = raw
+    .replace(/\s*\[\[(HANDOFF|CLIENTE_CONFIRMADO)\]\]\s*/g, '')
+    .replace(/\s*\[\[SOLICITA_DOC:[^\]]*\]\]\s*/gi, '')
+    .trim();
   // Garantia extra de formalidade: nenhum emoji vai para o cliente.
   if (!admin) reply = stripEmojis(reply);
 
@@ -291,6 +339,14 @@ async function respond(sock, jid, text, admin, msg) {
         `\nO cliente pediu atendimento humano. O assistente continua disponível ` +
         `caso ele siga escrevendo; assuma a conversa quando puder.`
     ).catch((e) => console.error('Falha ao notificar dono:', e.message));
+  }
+
+  // PEDIDO DE DOCUMENTO: o cliente pediu uma cópia de um documento da pasta.
+  // O bot NÃO envia sozinho — localiza o(s) arquivo(s) e pede aprovação ao dono.
+  if (docMatch) {
+    await requestDocSend(sock, jid, docMatch[1].trim()).catch((e) =>
+      console.error('Falha no pedido de documento:', e.message)
+    );
   }
 
   // MEMÓRIA DE LONGO PRAZO: atualiza o _FICHA.md do cliente na pasta da rede
@@ -338,6 +394,53 @@ function emailDocSaved(profile, attachment, jid, saved) {
   mailer
     .sendMail(`[Hamsa Bot] Documento recebido — ${quem}`, linhas.join('\n'))
     .catch(() => {});
+}
+
+// Pedido de documento pelo cliente: localiza arquivo(s) na pasta e pede
+// APROVAÇÃO do dono (não envia direto — guarda de identidade). Só para cliente
+// já confirmado e localizado.
+async function requestDocSend(sock, jid, termo) {
+  const prof = store.getProfile(jid);
+  const quem = prof.nome ? `${prof.nome} (${numberOf(jid)})` : numberOf(jid);
+
+  if (!prof.confirmed) {
+    await notifyOwner(
+      sock,
+      `📄 ${quem} pediu um documento ("${termo}"), mas o cadastro ainda não foi ` +
+        `confirmado. Peça confirmação antes de enviar documentos pessoais.`
+    ).catch(() => {});
+    return;
+  }
+
+  const docs = clientes.findDocuments(prof, termo);
+  if (!docs.length) {
+    await notifyOwner(
+      sock,
+      `📄 *Pedido de documento*\nCliente: ${quem}\nPedido: "${termo}"\n` +
+        `Não encontrei nenhum arquivo com esse nome na pasta do cliente. Favor verificar.`
+    ).catch(() => {});
+    return;
+  }
+
+  const lines = [
+    '📄 *Pedido de documento — aprovar envio*',
+    `Cliente: ${quem}`,
+    prof.apolice ? `Apólice: ${prof.apolice}` : null,
+    `Pedido: "${termo}"`,
+    '',
+    'Encontrei na pasta do cliente:',
+  ].filter(Boolean);
+
+  for (const d of docs) {
+    const token = newToken();
+    pendingSends.set(token, { jid, path: d.path, name: d.name });
+    lines.push(`• ${d.rel ? d.rel + '/' : ''}${d.name}\n   enviar: !enviar ${token}`);
+  }
+  lines.push('', 'Responda com o comando do arquivo que você autoriza enviar ao cliente.');
+
+  await notifyOwner(sock, lines.join('\n')).catch((e) =>
+    console.error('Falha ao pedir aprovação de documento:', e.message)
+  );
 }
 
 // Envia um aviso ao dono (chat "você mesmo" e/ou números ADMIN configurados).
