@@ -28,18 +28,32 @@ function loadKnowledge() {
 // Fichas de produto destiladas pela ingestão (src/ingest-produtos.js), uma por
 // seguradora, cada uma enumerando seus produtos/planos. Carregadas aqui e
 // anexadas ao conhecimento. Teto de tamanho para não estourar o prompt.
+// Lista .md recursivamente (suporta um cofre Obsidian com subpastas). Ignora
+// ocultos, a config .obsidian e lixo do sistema.
+function listMarkdown(dir, depth = 6) {
+  let out = [];
+  let entries;
+  try {
+    entries = fs.readdirSync(dir, { withFileTypes: true });
+  } catch {
+    return out;
+  }
+  for (const e of entries) {
+    if (e.name.startsWith('.') || e.name === '@eaDir' || e.name === '#recycle') continue;
+    const full = path.join(dir, e.name);
+    if (e.isDirectory()) {
+      if (depth > 0) out = out.concat(listMarkdown(full, depth - 1));
+    } else if (e.isFile() && e.name.toLowerCase().endsWith('.md')) {
+      out.push(full);
+    }
+  }
+  return out;
+}
+
 function loadProdutos() {
   const dir = process.env.PRODUTOS_KB_DIR || path.join(__dirname, '..', 'data', 'produtos');
   const CAP = parseInt(process.env.PRODUTOS_KB_MAX_CHARS || '160000', 10);
-  let files;
-  try {
-    files = fs
-      .readdirSync(dir)
-      .filter((f) => f.toLowerCase().endsWith('.md') && !f.startsWith('.'))
-      .sort();
-  } catch {
-    return '';
-  }
+  const files = listMarkdown(dir).sort();
   if (!files.length) return '';
   const parts = [];
   let total = 0;
@@ -47,7 +61,7 @@ function loadProdutos() {
   for (const f of files) {
     let txt;
     try {
-      txt = fs.readFileSync(path.join(dir, f), 'utf8').trim();
+      txt = fs.readFileSync(f, 'utf8').trim();
     } catch {
       continue;
     }
