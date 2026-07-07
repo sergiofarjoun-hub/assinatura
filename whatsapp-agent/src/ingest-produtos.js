@@ -56,13 +56,19 @@ function subdirs(dir) {
   }
 }
 
+// Versão da destilação. Suba quando mudar o prompt/params: entra no hash e força
+// reprocessar as seguradoras já em cache.
+const KB_VERSION = '2';
+
 // Acha, dentro da pasta da seguradora, as subpastas de foco (BROCHURAS,
-// APOLICES…) por nome (case/acentos-insensível). Retorna caminhos existentes.
+// APOLICES…). Casa por CONTEÚDO do nome (case/acentos-insensível), então
+// "2026 Brochuras", "APOLICES", "Apolices 2026" etc. também batem.
 function focusPaths(carrierPath) {
-  const wanted = config.produtosSubpastas.map(norm);
+  const wanted = config.produtosSubpastas.map(norm).filter(Boolean);
   const out = [];
   for (const d of subdirs(carrierPath)) {
-    if (wanted.includes(norm(d.name))) out.push(path.join(carrierPath, d.name));
+    const n = norm(d.name);
+    if (wanted.some((w) => n.includes(w) || w.includes(n))) out.push(path.join(carrierPath, d.name));
   }
   return out;
 }
@@ -99,6 +105,7 @@ function collectPdfs(roots, depth = 3) {
 
 function carrierHash(pdfs) {
   const h = crypto.createHash('sha256');
+  h.update(`v${KB_VERSION}\n`);
   for (const f of pdfs.slice().sort((a, b) => a.rel.localeCompare(b.rel))) {
     h.update(`${f.rel}|${f.size}|${Math.round(f.mtimeMs)}\n`);
   }
@@ -168,7 +175,7 @@ async function distill(carrier, corpus) {
   // Streaming evita o timeout de requisições longas (recomendação da Anthropic).
   const stream = client.messages.stream({
     model: config.model,
-    max_tokens: 3000,
+    max_tokens: 6000,
     system: SYSTEM,
     messages: [
       {
