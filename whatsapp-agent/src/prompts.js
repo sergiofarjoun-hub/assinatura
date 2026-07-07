@@ -25,7 +25,59 @@ function loadKnowledge() {
   }
 }
 
-const KNOWLEDGE = loadKnowledge();
+// Fichas de produto destiladas pela ingestão (src/ingest-produtos.js), uma por
+// seguradora, cada uma enumerando seus produtos/planos. Carregadas aqui e
+// anexadas ao conhecimento. Teto de tamanho para não estourar o prompt.
+function loadProdutos() {
+  const dir = process.env.PRODUTOS_KB_DIR || path.join(__dirname, '..', 'data', 'produtos');
+  const CAP = parseInt(process.env.PRODUTOS_KB_MAX_CHARS || '160000', 10);
+  let files;
+  try {
+    files = fs
+      .readdirSync(dir)
+      .filter((f) => f.toLowerCase().endsWith('.md') && !f.startsWith('.'))
+      .sort();
+  } catch {
+    return '';
+  }
+  if (!files.length) return '';
+  const parts = [];
+  let total = 0;
+  let truncou = false;
+  for (const f of files) {
+    let txt;
+    try {
+      txt = fs.readFileSync(path.join(dir, f), 'utf8').trim();
+    } catch {
+      continue;
+    }
+    if (!txt) continue;
+    if (total + txt.length > CAP) {
+      truncou = true;
+      break;
+    }
+    parts.push(txt);
+    total += txt.length;
+  }
+  if (!parts.length) return '';
+  if (truncou) {
+    console.warn(
+      `Conhecimento de produto truncado no teto de ${CAP} caracteres — ` +
+        'considere aumentar PRODUTOS_KB_MAX_CHARS ou reduzir seguradoras carregadas.'
+    );
+  }
+  return (
+    '\n\n=== FICHAS DE PRODUTO DAS SEGURADORAS (fonte de verdade) ===\n' +
+    'Cada seguradora pode ter VÁRIOS produtos/planos (hospitalar, completo, ' +
+    'substituição do antigo, etc.). Use estas fichas para explicar coberturas, ' +
+    'franquia, área, carências e diferenciais, e para ajudar a escolher o produto ' +
+    'certo. Confirme sempre qual PRODUTO o cliente tem/quer. Se algo não estiver ' +
+    'aqui, não invente: diga que vai verificar com a equipe.\n\n' +
+    parts.join('\n\n----------\n\n')
+  );
+}
+
+const KNOWLEDGE = loadKnowledge() + loadProdutos();
 
 const CLIENT_PROMPT = `Você é o assistente virtual da Hamsa, corretora de seguros especializada em
 seguro-saúde internacional (IPMI — International Private Medical Insurance) e seguros para

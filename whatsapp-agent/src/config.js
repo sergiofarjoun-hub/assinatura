@@ -6,6 +6,8 @@
 // simplesmente ignora nesse caso.
 require('dotenv').config();
 
+const path = require('path');
+
 function parseNumbers(raw) {
   return (raw || '')
     .split(',')
@@ -47,6 +49,24 @@ const config = {
 
   // Pasta de dados (sessão do WhatsApp + histórico)
   dataDir: process.env.DATA_DIR || 'data',
+
+  // Conhecimento de produto: ingestão dos materiais das seguradoras.
+  // PRODUTOS_DIR = pasta "SEGUROS SAUDE" montada no container (ex.: /produtos).
+  // Só as subpastas de PRODUTOS_SUBPASTAS são lidas (foco em condições e
+  // brochuras; ignora vídeos/treinamentos/etc.). As fichas destiladas ficam em
+  // PRODUTOS_KB_DIR e são carregadas pelo bot.
+  produtosDir: process.env.PRODUTOS_DIR || '',
+  produtosSubpastas: (process.env.PRODUTOS_SUBPASTAS || 'BROCHURAS,APOLICES')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean),
+  produtosKbDir: process.env.PRODUTOS_KB_DIR || path.join('data', 'produtos'),
+  produtosMaxChars: parseInt(process.env.PRODUTOS_MAX_CHARS || '120000', 10),
+  // Filtro opcional de seguradoras (vírgula). Vazio = todas as pastas.
+  produtosCarriers: (process.env.PRODUTOS_CARRIERS || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean),
 
   // Notificação por e-mail quando um documento é arquivado (quem submeteu).
   // Requer SMTP_* e NOTIFY_EMAIL; sem eles, o recurso fica desligado.
