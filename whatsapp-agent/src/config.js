@@ -68,6 +68,11 @@ const config = {
     .map((s) => s.trim())
     .filter(Boolean),
 
+  // Envio de documentos da pasta ao cliente: automático (true) ou sob aprovação
+  // do dono (false). Automático só vale para cliente já CONFIRMADO; o dono
+  // recebe um registro (WhatsApp + e-mail) de cada envio.
+  docSendAuto: (process.env.DOC_SEND_AUTO || 'true') !== 'false',
+
   // Notificação por e-mail quando um documento é arquivado (quem submeteu).
   // Requer SMTP_* e NOTIFY_EMAIL; sem eles, o recurso fica desligado.
   notifyEmail: process.env.NOTIFY_EMAIL || '',

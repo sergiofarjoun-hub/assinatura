@@ -68,6 +68,17 @@ function mimeFor(name) {
   return m[ext] || 'application/octet-stream';
 }
 
+// Lê um arquivo do disco e envia ao cliente (imagem ou documento).
+async function sendFileTo(sock, jid, filePath, name) {
+  const buf = fs.readFileSync(filePath);
+  const mime = mimeFor(name);
+  const msg = mime.startsWith('image/')
+    ? { image: buf, mimetype: mime }
+    : { document: buf, mimetype: mime, fileName: name };
+  const sent = await sock.sendMessage(jid, msg);
+  rememberSent(sent?.key?.id);
+}
+
 // fila por chat: evita respostas concorrentes na mesma conversa
 const chatQueues = new Map();
 function enqueue(jid, task) {
@@ -169,13 +180,7 @@ async function handleCommand(sock, jid, text) {
       const pend = token && pendingSends.get(token);
       if (!pend) return sendText(sock, jid, `Token inválido ou já usado: ${token || '(vazio)'}`);
       try {
-        const buf = fs.readFileSync(pend.path);
-        const mime = mimeFor(pend.name);
-        const msg = mime.startsWith('image/')
-          ? { image: buf, mimetype: mime }
-          : { document: buf, mimetype: mime, fileName: pend.name };
-        const sent = await sock.sendMessage(pend.jid, msg);
-        rememberSent(sent?.key?.id);
+        await sendFileTo(sock, pend.jid, pend.path, pend.name);
         pendingSends.delete(token);
         return sendText(sock, jid, `✅ Enviado a ${numberOf(pend.jid)}: ${pend.name}`);
       } catch (err) {
@@ -332,13 +337,13 @@ async function respond(sock, jid, text, admin, msg) {
     const prof = store.getProfile(jid);
     const quem = prof.nome ? `${prof.nome} (${numberOf(jid)})` : numberOf(jid);
     console.log(`Concierge solicitado por ${quem}.`);
-    await notifyOwner(
-      sock,
+    const t =
       `🔔 *Concierge solicitado*\nCliente: ${quem}` +
-        (prof.apolice ? `\nApólice: ${prof.apolice}` : '') +
-        `\nO cliente pediu atendimento humano. O assistente continua disponível ` +
-        `caso ele siga escrevendo; assuma a conversa quando puder.`
-    ).catch((e) => console.error('Falha ao notificar dono:', e.message));
+      (prof.apolice ? `\nApólice: ${prof.apolice}` : '') +
+      `\nO cliente pediu atendimento humano. O assistente continua disponível ` +
+      `caso ele siga escrevendo; assuma a conversa quando puder.`;
+    await notifyOwner(sock, t).catch((e) => console.error('Falha ao notificar dono:', e.message));
+    emailOwner(`[Hamsa Bot] Concierge solicitado — ${quem}`, t);
   }
 
   // PEDIDO DE DOCUMENTO: o cliente pediu uma cópia de um documento da pasta.
@@ -396,32 +401,58 @@ function emailDocSaved(profile, attachment, jid, saved) {
     .catch(() => {});
 }
 
-// Pedido de documento pelo cliente: localiza arquivo(s) na pasta e pede
-// APROVAÇÃO do dono (não envia direto — guarda de identidade). Só para cliente
-// já confirmado e localizado.
+// Avisa o dono também por e-mail (canal que não some no meio das conversas).
+function emailOwner(subject, text) {
+  mailer.sendMail(subject, text).catch(() => {});
+}
+
+// Pedido de documento pelo cliente. Modo AUTOMÁTICO (config.docSendAuto): envia
+// direto ao cliente CONFIRMADO e registra (WhatsApp + e-mail). Modo aprovação:
+// localiza e pede o !enviar do dono. Nunca cruza pastas de clientes diferentes.
 async function requestDocSend(sock, jid, termo) {
   const prof = store.getProfile(jid);
   const quem = prof.nome ? `${prof.nome} (${numberOf(jid)})` : numberOf(jid);
 
   if (!prof.confirmed) {
-    await notifyOwner(
-      sock,
+    const t =
       `📄 ${quem} pediu um documento ("${termo}"), mas o cadastro ainda não foi ` +
-        `confirmado. Peça confirmação antes de enviar documentos pessoais.`
-    ).catch(() => {});
+      `confirmado. O bot não enviou. Confirme o cadastro para liberar.`;
+    await notifyOwner(sock, t).catch(() => {});
+    emailOwner(`[Hamsa Bot] Pedido de documento sem cadastro — ${quem}`, t);
     return;
   }
 
   const docs = clientes.findDocuments(prof, termo);
   if (!docs.length) {
-    await notifyOwner(
-      sock,
+    const t =
       `📄 *Pedido de documento*\nCliente: ${quem}\nPedido: "${termo}"\n` +
-        `Não encontrei nenhum arquivo com esse nome na pasta do cliente. Favor verificar.`
-    ).catch(() => {});
+      `Não encontrei nenhum arquivo com esse nome na pasta do cliente. Favor verificar.`;
+    await notifyOwner(sock, t).catch(() => {});
+    emailOwner(`[Hamsa Bot] Documento não encontrado — ${quem}`, t);
     return;
   }
 
+  if (config.docSendAuto) {
+    // Envia automaticamente (até 3 arquivos que casaram) e REGISTRA ao dono.
+    const enviados = [];
+    for (const d of docs.slice(0, 3)) {
+      try {
+        await sendFileTo(sock, jid, d.path, d.name);
+        enviados.push(`${d.rel ? d.rel + '/' : ''}${d.name}`);
+      } catch (e) {
+        console.error(`Falha ao enviar ${d.name} a ${numberOf(jid)}:`, e.message);
+      }
+    }
+    const t =
+      `📄 *Documento enviado automaticamente*\nCliente: ${quem}` +
+      (prof.apolice ? `\nApólice: ${prof.apolice}` : '') +
+      `\nPedido: "${termo}"\nEnviado(s): ${enviados.join(', ') || '(nenhum — falha no envio)'}`;
+    await notifyOwner(sock, t).catch(() => {});
+    emailOwner(`[Hamsa Bot] Documento enviado — ${quem}`, t);
+    return;
+  }
+
+  // Modo aprovação (DOC_SEND_AUTO=false): pede o !enviar do dono.
   const lines = [
     '📄 *Pedido de documento — aprovar envio*',
     `Cliente: ${quem}`,
@@ -430,17 +461,17 @@ async function requestDocSend(sock, jid, termo) {
     '',
     'Encontrei na pasta do cliente:',
   ].filter(Boolean);
-
   for (const d of docs) {
     const token = newToken();
     pendingSends.set(token, { jid, path: d.path, name: d.name });
     lines.push(`• ${d.rel ? d.rel + '/' : ''}${d.name}\n   enviar: !enviar ${token}`);
   }
   lines.push('', 'Responda com o comando do arquivo que você autoriza enviar ao cliente.');
-
-  await notifyOwner(sock, lines.join('\n')).catch((e) =>
+  const corpo = lines.join('\n');
+  await notifyOwner(sock, corpo).catch((e) =>
     console.error('Falha ao pedir aprovação de documento:', e.message)
   );
+  emailOwner(`[Hamsa Bot] Aprovar envio de documento — ${quem}`, corpo);
 }
 
 // Envia um aviso ao dono (chat "você mesmo" e/ou números ADMIN configurados).
