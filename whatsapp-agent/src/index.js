@@ -263,6 +263,11 @@ async function respond(sock, jid, text, admin, msg) {
     // nota do sistema para o agente confirmar o cadastro antes de arquivar
     if (!profile.confirmed) {
       const m = clientes.resolveFolder(profile);
+      console.log(
+        `[resolve] nome=${JSON.stringify(profile.nome || '')} apolice=${JSON.stringify(
+          profile.apolice || ''
+        )} op=${JSON.stringify(profile.operadora || '')} -> ${m ? m.nome : 'NENHUM'}`
+      );
       if (m) {
         systemNote =
           `[SISTEMA] Cadastro localizado: cliente "${m.nome}" na operadora ` +
@@ -546,6 +551,9 @@ async function notifyOwner(sock, text) {
 // ---------- loop principal ----------
 
 async function start() {
+  console.log(
+    `[clientes] habilitado=${clientes.enabled()} BASE=${clientes.BASE} total=${clientes.count()}`
+  );
   const authDir = path.join(config.dataDir, 'auth');
   const { state, saveCreds } = await useMultiFileAuthState(authDir);
   const { version } = await fetchLatestBaileysVersion().catch(() => ({ version: undefined }));

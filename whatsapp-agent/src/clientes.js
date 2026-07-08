@@ -348,6 +348,15 @@ function findDocuments(profile, query, limit = 8) {
   return out.slice(0, limit);
 }
 
+// Quantos clientes o bot enxerga na base (diagnóstico de inicialização).
+function count() {
+  try {
+    return collectClients().length;
+  } catch {
+    return -1;
+  }
+}
+
 module.exports = {
   enabled,
   resolveFolder,
@@ -356,5 +365,6 @@ module.exports = {
   readFicha,
   writeFicha,
   findDocuments,
+  count,
   BASE,
 };
