@@ -24,7 +24,7 @@ const fs = require('fs');
 
 const config = require('./config');
 const store = require('./store');
-const { generateReply, extractIdentity, updateFicha } = require('./agent');
+const { generateReply, extractIdentity, updateFicha, extractPlanFromDoc } = require('./agent');
 const media = require('./media');
 const clientes = require('./clientes');
 const mailer = require('./mailer');
@@ -280,6 +280,15 @@ async function respond(sock, jid, text, admin, msg) {
       }
     }
 
+    // Identifica o PLANO e a FRANQUIA do contrato (uma vez), lendo o ID card/
+    // apólice na pasta do cliente. Só quando confirmado e localizado.
+    if (profile.confirmed && !profile.planoChecked && clientes.resolveFolder(profile)) {
+      await resolveClientPlan(jid, profile).catch((e) =>
+        console.error('Falha ao identificar plano:', e.message)
+      );
+      profile = store.getProfile(jid);
+    }
+
     // MEMÓRIA DE LONGO PRAZO: se o cliente já está confirmado e localizado,
     // injeta a ficha (_FICHA.md) como contexto — o agente "lembra" do cliente
     // entre atendimentos e sabe a posição de claims/franquia dele.
@@ -297,6 +306,19 @@ async function respond(sock, jid, text, admin, msg) {
           'Claims / Renovações); use os valores da ficha como esse controle. Se algum ' +
           'dado não estiver na ficha, diga que vai levantar a posição atualizada no Claims.';
       }
+    }
+
+    // PLANO E FRANQUIA DO CONTRATO (lidos do ID card/apólice): injeta no contexto.
+    if (profile.confirmed && (profile.plano || profile.franquia)) {
+      systemNote =
+        `[SISTEMA] Plano do cliente (lido do ID card/apólice): ${
+          profile.plano || '(não identificado)'
+        }. Franquia/dedutível do CONTRATO: ${profile.franquia || '(não identificado)'}. ` +
+        `Responda "qual meu plano" / "qual minha franquia" com base nisto, e cruze com as ` +
+        `FICHAS DE PRODUTO para explicar o que esse plano cobre. ATENÇÃO: este é o dedutível ` +
+        `do CONTRATO (teto anual), NÃO o quanto já foi consumido no ano; se perguntarem quanto ` +
+        `já bateu da franquia, diga que vai levantar essa posição com a equipe.\n\n` +
+        systemNote;
     }
   }
 
@@ -404,6 +426,42 @@ function emailDocSaved(profile, attachment, jid, saved) {
 // Avisa o dono também por e-mail (canal que não some no meio das conversas).
 function emailOwner(subject, text) {
   mailer.sendMail(subject, text).catch(() => {});
+}
+
+// Identifica (uma vez por cliente) o PLANO e a FRANQUIA do contrato, lendo o
+// ID card / apólice na pasta do cliente. Guarda no perfil (planoChecked evita
+// reler a cada mensagem). Só para cliente confirmado e localizado.
+async function resolveClientPlan(jid, profile) {
+  let docs = clientes.findDocuments(profile, 'id card');
+  if (!docs.length) docs = clientes.findDocuments(profile, 'apolice');
+  if (!docs.length) docs = clientes.findDocuments(profile, 'policy year');
+  const doc = docs.find((d) => /\.(pdf|jpe?g|png|webp)$/i.test(d.name));
+  if (!doc) {
+    store.setProfile(jid, { planoChecked: true });
+    return;
+  }
+  try {
+    const buf = fs.readFileSync(doc.path);
+    if (buf.length > 8 * 1024 * 1024) {
+      store.setProfile(jid, { planoChecked: true });
+      return;
+    }
+    const kind = /\.pdf$/i.test(doc.name) ? 'pdf' : 'image';
+    const media = { kind, mediaType: mimeFor(doc.name), dataB64: buf.toString('base64') };
+    const info = await extractPlanFromDoc(media);
+    const patch = { planoChecked: true };
+    if (info.plano) patch.plano = info.plano;
+    if (info.franquia) patch.franquia = info.franquia;
+    store.setProfile(jid, patch);
+    if (info.plano || info.franquia) {
+      console.log(
+        `Plano identificado (${doc.name}): ${info.plano || '?'} / franquia ${info.franquia || '?'}`
+      );
+    }
+  } catch (e) {
+    console.error('Falha ao ler documento do cliente para plano:', e.message);
+    store.setProfile(jid, { planoChecked: true });
+  }
 }
 
 // Pedido de documento pelo cliente. Modo AUTOMÁTICO (config.docSendAuto): envia

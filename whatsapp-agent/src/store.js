@@ -94,7 +94,10 @@ function setProfile(jid, patch) {
   if (patch.apolice) cur.apolice = patch.apolice;
   if (patch.operadora) cur.operadora = patch.operadora;
   if (patch.assunto) cur.assunto = patch.assunto;
+  if (patch.plano) cur.plano = patch.plano;
+  if (patch.franquia) cur.franquia = patch.franquia;
   if (typeof patch.confirmed === 'boolean') cur.confirmed = patch.confirmed;
+  if (typeof patch.planoChecked === 'boolean') cur.planoChecked = patch.planoChecked;
   save();
   return cur;
 }

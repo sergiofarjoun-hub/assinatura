@@ -270,4 +270,78 @@ async function updateFicha(currentFicha, history, media) {
   }
 }
 
-module.exports = { generateReply, extractIdentity, updateFicha };
+// Lê um documento do cliente (carteirinha/ID card ou apólice) e extrai o NOME
+// do plano e a FRANQUIA/dedutível do contrato. Nunca lança — em erro devolve {}.
+async function extractPlanFromDoc(media) {
+  const block =
+    media.kind === 'pdf'
+      ? {
+          type: 'document',
+          source: { type: 'base64', media_type: 'application/pdf', data: media.dataB64 },
+        }
+      : {
+          type: 'image',
+          source: { type: 'base64', media_type: media.mediaType, data: media.dataB64 },
+        };
+  try {
+    const response = await client.messages.create({
+      model: config.model,
+      max_tokens: 300,
+      output_config: {
+        format: {
+          type: 'json_schema',
+          schema: {
+            type: 'object',
+            properties: {
+              plano: {
+                type: 'string',
+                description:
+                  'Nome do plano/produto do seguro-saúde como aparece no documento ' +
+                  '(ex.: "VUMI Direct VIP Choice", "EVER Green"), ou "" se não constar',
+              },
+              franquia: {
+                type: 'string',
+                description:
+                  'Franquia/dedutível do contrato como aparece (ex.: "US$5.000", ' +
+                  '"Option III"), ou "" se não constar',
+              },
+              operadora: {
+                type: 'string',
+                description: 'Seguradora/operadora (ex.: VUMI, EVER), ou "" se não constar',
+              },
+            },
+            required: ['plano', 'franquia', 'operadora'],
+            additionalProperties: false,
+          },
+        },
+      },
+      messages: [
+        {
+          role: 'user',
+          content: [
+            block,
+            {
+              type: 'text',
+              text:
+                'Este é um documento de seguro-saúde internacional (carteirinha/ID card ou ' +
+                'apólice). Extraia o NOME DO PLANO e a FRANQUIA/dedutível do contrato, além ' +
+                'da operadora. Se algo não constar, devolva "" (não invente).',
+            },
+          ],
+        },
+      ],
+    });
+    const text = response.content.find((b) => b.type === 'text')?.text || '{}';
+    const data = JSON.parse(text);
+    return {
+      plano: (data.plano || '').trim(),
+      franquia: (data.franquia || '').trim(),
+      operadora: (data.operadora || '').trim(),
+    };
+  } catch (err) {
+    console.error('Falha ao extrair plano do documento:', err.message);
+    return {};
+  }
+}
+
+module.exports = { generateReply, extractIdentity, updateFicha, extractPlanFromDoc };
