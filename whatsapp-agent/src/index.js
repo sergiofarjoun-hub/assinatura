@@ -305,9 +305,10 @@ async function respond(sock, jid, text, admin, msg) {
       }
     }
 
-    // Identifica o PLANO e a FRANQUIA do contrato (uma vez), lendo o ID card/
-    // apólice na pasta do cliente. Só quando confirmado e localizado.
-    if (profile.confirmed && !profile.planoChecked && clientes.resolveFolder(profile)) {
+    // Identifica o PLANO e a FRANQUIA do contrato. Enquanto o valor não vier do
+    // BANCO (renovacoes.db = fonte de verdade), segue tentando — assim um perfil
+    // com plano antigo (lido de documento) se auto-corrige na renovação atual.
+    if (profile.confirmed && !profile.planoFromDb && clientes.resolveFolder(profile)) {
       await resolveClientPlan(jid, profile).catch((e) =>
         console.error('Falha ao identificar plano:', e.message)
       );
@@ -464,6 +465,7 @@ async function resolveClientPlan(jid, profile) {
     if (r && (r.plano || r.franquia)) {
       store.setProfile(jid, {
         planoChecked: true,
+        planoFromDb: true, // veio da fonte de verdade — não reconsulta mais
         plano: r.plano || undefined,
         franquia: r.franquia || undefined,
       });
@@ -473,6 +475,10 @@ async function resolveClientPlan(jid, profile) {
   } catch (e) {
     console.error('Lookup de renovações falhou:', e.message);
   }
+
+  // Banco não trouxe nada. Se já lemos o documento antes, não relê a cada
+  // mensagem (o gatilho continua tentando o banco, que é barato).
+  if (profile.planoChecked) return;
 
   // 2) FALLBACK: lê o documento MAIS RECENTE da pasta (quando não há no banco).
   // Junta candidatos (ID card, ano da apólice, apólice) e lê o mais novo.

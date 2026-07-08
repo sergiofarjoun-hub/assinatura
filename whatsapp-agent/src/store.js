@@ -98,6 +98,7 @@ function setProfile(jid, patch) {
   if (patch.franquia) cur.franquia = patch.franquia;
   if (typeof patch.confirmed === 'boolean') cur.confirmed = patch.confirmed;
   if (typeof patch.planoChecked === 'boolean') cur.planoChecked = patch.planoChecked;
+  if (typeof patch.planoFromDb === 'boolean') cur.planoFromDb = patch.planoFromDb;
   save();
   return cur;
 }
