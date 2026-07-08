@@ -334,16 +334,19 @@ async function respond(sock, jid, text, admin, msg) {
       }
     }
 
-    // PLANO E FRANQUIA DO CONTRATO (lidos do ID card/apólice): injeta no contexto.
-    if (profile.confirmed && (profile.plano || profile.franquia)) {
+    // PLANO / FRANQUIA / APÓLICE do cliente (da última renovação): injeta no contexto.
+    if (profile.confirmed && (profile.plano || profile.franquia || profile.apolice)) {
       systemNote =
-        `[SISTEMA] Plano do cliente (lido do ID card/apólice): ${
-          profile.plano || '(não identificado)'
-        }. Franquia/dedutível do CONTRATO: ${profile.franquia || '(não identificado)'}. ` +
-        `Responda "qual meu plano" / "qual minha franquia" com base nisto, e cruze com as ` +
-        `FICHAS DE PRODUTO para explicar o que esse plano cobre. ATENÇÃO: este é o dedutível ` +
-        `do CONTRATO (teto anual), NÃO o quanto já foi consumido no ano; se perguntarem quanto ` +
-        `já bateu da franquia, diga que vai levantar essa posição com a equipe.\n\n` +
+        `[SISTEMA] Dados do cliente (última renovação): ` +
+        `Plano: ${profile.plano || '(não identificado)'}. ` +
+        `Franquia/dedutível do CONTRATO: ${profile.franquia || '(não identificado)'}. ` +
+        `Número da apólice: ${profile.apolice || '(não identificado)'}. ` +
+        `O bot JÁ TEM o número da apólice — NUNCA peça esse número ao cliente; se ele ` +
+        `perguntar, informe o número acima. Responda "qual meu plano/franquia" com base ` +
+        `nisto e cruze com as FICHAS DE PRODUTO para explicar a cobertura. ATENÇÃO: a ` +
+        `franquia acima é o dedutível do CONTRATO (teto anual), NÃO o quanto já foi ` +
+        `consumido; se perguntarem quanto já bateu, diga que vai levantar no controle de ` +
+        `Claims da Hamsa.\n\n` +
         systemNote;
     }
   }
@@ -462,14 +465,19 @@ async function resolveClientPlan(jid, profile) {
   // mudam a cada renovação — sempre usar o atual, não documentos antigos.
   try {
     const r = renovacoes.lookup(profile);
-    if (r && (r.plano || r.franquia)) {
+    if (r && (r.plano || r.franquia || r.apolice)) {
       store.setProfile(jid, {
         planoChecked: true,
         planoFromDb: true, // veio da fonte de verdade — não reconsulta mais
         plano: r.plano || undefined,
         franquia: r.franquia || undefined,
+        apolice: r.apolice || undefined, // nº da apólice: o bot já tem, não pede
       });
-      console.log(`Plano (renovações): ${r.plano || '?'} / franquia ${r.franquia || '?'}`);
+      console.log(
+        `Plano (renovações): ${r.plano || '?'} / franquia ${r.franquia || '?'} / apólice ${
+          r.apolice || '?'
+        }`
+      );
       return;
     }
   } catch (e) {
