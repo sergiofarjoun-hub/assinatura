@@ -28,6 +28,7 @@ const { generateReply, extractIdentity, updateFicha, extractPlanFromDoc } = requ
 const media = require('./media');
 const clientes = require('./clientes');
 const mailer = require('./mailer');
+const renovacoes = require('./renovacoes');
 
 const logger = pino({ level: process.env.LOG_LEVEL || 'warn' });
 
@@ -456,10 +457,38 @@ function emailOwner(subject, text) {
 // ID card / apólice na pasta do cliente. Guarda no perfil (planoChecked evita
 // reler a cada mensagem). Só para cliente confirmado e localizado.
 async function resolveClientPlan(jid, profile) {
-  let docs = clientes.findDocuments(profile, 'id card');
-  if (!docs.length) docs = clientes.findDocuments(profile, 'apolice');
-  if (!docs.length) docs = clientes.findDocuments(profile, 'policy year');
-  const doc = docs.find((d) => /\.(pdf|jpe?g|png|webp)$/i.test(d.name));
+  // 1) FONTE DE VERDADE: a última renovação (renovacoes.db). Plano e franquia
+  // mudam a cada renovação — sempre usar o atual, não documentos antigos.
+  try {
+    const r = renovacoes.lookup(profile);
+    if (r && (r.plano || r.franquia)) {
+      store.setProfile(jid, {
+        planoChecked: true,
+        plano: r.plano || undefined,
+        franquia: r.franquia || undefined,
+      });
+      console.log(`Plano (renovações): ${r.plano || '?'} / franquia ${r.franquia || '?'}`);
+      return;
+    }
+  } catch (e) {
+    console.error('Lookup de renovações falhou:', e.message);
+  }
+
+  // 2) FALLBACK: lê o documento MAIS RECENTE da pasta (quando não há no banco).
+  // Junta candidatos (ID card, ano da apólice, apólice) e lê o mais novo.
+  const docs = [
+    ...clientes.findDocuments(profile, 'id card'),
+    ...clientes.findDocuments(profile, 'policy year'),
+    ...clientes.findDocuments(profile, 'apolice'),
+  ].filter((d) => /\.(pdf|jpe?g|png|webp)$/i.test(d.name));
+  docs.sort((a, b) => {
+    try {
+      return fs.statSync(b.path).mtimeMs - fs.statSync(a.path).mtimeMs;
+    } catch {
+      return 0;
+    }
+  });
+  const doc = docs[0];
   if (!doc) {
     store.setProfile(jid, { planoChecked: true });
     return;

@@ -13,6 +13,10 @@ services:
       # Cofre de conhecimento (Obsidian) — o bot lê as fichas de produto daqui.
       # Host no NAS: /volume1/SERVER/BASE_CONHECIMENTO (ajuste em .env se mudar).
       - ${BASE_CONHECIMENTO_HOST_DIR:-/volume1/SERVER/BASE_CONHECIMENTO}:/base_conhecimento:ro
+      # Banco do RENOVACOES APP (só leitura) — fonte do plano/franquia ATUAIS
+      # (última renovação). Ative definindo RENOVACOES_DB_HOST + RENOVACOES_DB no
+      # .env. Default aponta para ./data (inócuo) para não quebrar se não usar.
+      - ${RENOVACOES_DB_HOST:-./data}:/renovacoes:ro
     logging:
       driver: json-file
       options:

@@ -1,8 +1,10 @@
 FROM node:20-slim
 
-# git é necessário porque uma dependência do Baileys (libsignal) é baixada via git.
+# git: dependência do Baileys (libsignal) é baixada via git.
+# python3/make/g++: fallback de compilação do better-sqlite3 (caso não haja
+# binário pré-compilado para a plataforma). Normalmente o prebuilt basta.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends git ca-certificates \
+    && apt-get install -y --no-install-recommends git ca-certificates python3 make g++ \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
