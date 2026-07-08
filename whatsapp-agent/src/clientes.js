@@ -136,18 +136,36 @@ function resolveFolder({ nome, apolice, operadora }) {
     if (hits.length === 1) return pick(hits[0]);
   }
 
-  // 2) por nome: exato normalizado (único) tem prioridade
+  // 2) por nome. Remove palavras-ruído (o cliente costuma digitar "meu nome é
+  // ... seguro VUMI") e o nome da operadora, para o casamento não quebrar.
   const nnome = norm(nome);
   if (nnome) {
-    const exact = cands.filter((c) => norm(c.name) === nnome);
+    const NOISE = new Set([
+      'seguro', 'seguros', 'operadora', 'plano', 'apolice', 'sr', 'sra', 'cliente',
+      'meu', 'nome', 'completo', 'e', 'sou', 'da', 'do', 'de',
+    ]);
+    const nopToks = nop ? nop.split(' ').filter(Boolean) : [];
+    const toks = nnome
+      .split(' ')
+      .filter((t) => t && !NOISE.has(t) && !nopToks.includes(t));
+    const limpo = toks.join(' ');
+
+    // exato (nome cru OU nome limpo)
+    const exact = cands.filter((c) => {
+      const fn = norm(c.name);
+      return fn === nnome || fn === limpo;
+    });
     if (exact.length === 1) return pick(exact[0]);
 
-    // senão, exige >=2 tokens do nome, todos presentes, resultado único
-    const toks = nnome.split(' ').filter(Boolean);
+    // token match nos DOIS sentidos: o que o cliente disse contém a pasta, ou
+    // a pasta contém o que o cliente disse. Precisa de >=2 tokens e ser único.
     if (toks.length >= 2) {
       const c2 = cands.filter((c) => {
         const fn = norm(c.name);
-        return toks.every((t) => fn.includes(t));
+        const fToks = fn.split(' ').filter(Boolean);
+        const queryInFolder = toks.every((t) => fn.includes(t));
+        const folderInQuery = fToks.length >= 2 && fToks.every((t) => nnome.includes(t));
+        return queryInFolder || folderInQuery;
       });
       if (c2.length === 1) return pick(c2[0]);
     }
