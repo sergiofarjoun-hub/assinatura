@@ -276,9 +276,11 @@ async function respond(sock, jid, text, admin, msg) {
         const key = `${jid}|${profile.nome || ''}|${profile.apolice || ''}|${profile.operadora || ''}`;
         if (!debugNotified.has(key)) {
           debugNotified.add(key);
-          notifyOwner(
+          // envia na PRÓPRIA conversa de teste, para você ver na hora
+          sendText(
             sock,
-            `🔎 DEBUG localização\nde: ${numberOf(jid)}\n` +
+            jid,
+            `🔎 DEBUG localização\n` +
               `nome="${profile.nome || ''}"\napolice="${profile.apolice || ''}"\n` +
               `operadora="${profile.operadora || ''}"\n` +
               `resultado: ${m ? `${m.operadora} / ${m.nome}` : 'NENHUM (não casou)'}`
