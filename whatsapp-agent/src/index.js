@@ -48,6 +48,9 @@ function rememberSent(id) {
 // Documentos aguardando aprovação do dono para envio ao cliente.
 // token -> { jid (cliente), path, name }. Em memória (aprovação é efêmera).
 const pendingSends = new Map();
+
+// DEBUG: para não repetir o aviso de localização a cada mensagem.
+const debugNotified = new Set();
 function newToken() {
   return Math.random().toString(36).slice(2, 8);
 }
@@ -268,6 +271,20 @@ async function respond(sock, jid, text, admin, msg) {
           profile.apolice || ''
         )} op=${JSON.stringify(profile.operadora || '')} -> ${m ? m.nome : 'NENHUM'}`
       );
+      // DEBUG no WhatsApp do dono: mostra o que foi extraído e se casou.
+      if (config.resolveDebug && (profile.nome || profile.apolice)) {
+        const key = `${jid}|${profile.nome || ''}|${profile.apolice || ''}|${profile.operadora || ''}`;
+        if (!debugNotified.has(key)) {
+          debugNotified.add(key);
+          notifyOwner(
+            sock,
+            `🔎 DEBUG localização\nde: ${numberOf(jid)}\n` +
+              `nome="${profile.nome || ''}"\napolice="${profile.apolice || ''}"\n` +
+              `operadora="${profile.operadora || ''}"\n` +
+              `resultado: ${m ? `${m.operadora} / ${m.nome}` : 'NENHUM (não casou)'}`
+          ).catch(() => {});
+        }
+      }
       if (m) {
         systemNote =
           `[SISTEMA] Cadastro localizado: cliente "${m.nome}" na operadora ` +

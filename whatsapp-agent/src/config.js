@@ -68,6 +68,10 @@ const config = {
     .map((s) => s.trim())
     .filter(Boolean),
 
+  // DEBUG temporário: espelha no WhatsApp do dono o resultado da localização do
+  // cadastro (o que foi extraído e se casou). Desligue com RESOLVE_DEBUG=false.
+  resolveDebug: (process.env.RESOLVE_DEBUG || 'true') !== 'false',
+
   // Envio de documentos da pasta ao cliente: automático (true) ou sob aprovação
   // do dono (false). Automático só vale para cliente já CONFIRMADO; o dono
   // recebe um registro (WhatsApp + e-mail) de cada envio.
