@@ -126,8 +126,12 @@ final class DictationController: ObservableObject {
         permissions.refresh()
         permissions.requestNotifications()
 
+        // Abrir a janela de onboarding tem de sair do ciclo de atualização da
+        // view (este init roda dentro do primeiro render do @StateObject do App);
+        // apresentá-la de forma síncrona dispara "AttributeGraph precondition
+        // failure: setting value during update" → SIGABRT.
         if !permissions.allGranted {
-            showSettings()
+            Task { @MainActor [weak self] in self?.showSettings() }
         }
 
         Task { await prepareEngine() }
