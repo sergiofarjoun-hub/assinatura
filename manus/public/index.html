@@ -36,6 +36,16 @@
   .msg.thinking { opacity: .55; font-style: italic; font-size: 13px; }
   .msg.error { border-color: var(--err); color: var(--err); }
 
+  /* Aprovação */
+  .msg.approval { border: 1px solid var(--gold); }
+  .msg.approval code { display: block; background: #060d1a; padding: 8px 10px; border-radius: 8px; margin: 8px 0; word-break: break-all; }
+  .msg.approval .btns { display: flex; gap: 8px; }
+  .msg.approval button { padding: 6px 18px; }
+  .msg.approval button.deny { background: transparent; color: var(--err); border: 1px solid var(--err); }
+  .msg.approval .verdict { font-weight: 700; }
+  .msg.approval .verdict.ok { color: var(--ok); }
+  .msg.approval .verdict.no { color: var(--err); }
+
   form { display: flex; gap: 10px; padding: 14px 20px; border-top: 1px solid var(--navy-3); }
   textarea {
     flex: 1; resize: none; background: var(--navy-2); color: var(--text);
@@ -67,9 +77,39 @@
   #files { border-top: 1px solid var(--navy-3); padding: 10px 16px; font-size: 12.5px; max-height: 30%; overflow-y: auto; }
   #files a { color: var(--gold); text-decoration: none; display: block; padding: 2px 0; }
   @media (max-width: 900px) { #activityCol { display: none; } }
+
+  /* Login */
+  #loginOverlay {
+    position: fixed; inset: 0; background: rgba(6, 12, 24, .92);
+    display: none; align-items: center; justify-content: center; z-index: 10;
+  }
+  #loginOverlay.show { display: flex; }
+  #loginCard {
+    background: var(--navy-2); border: 1px solid var(--navy-3); border-radius: 14px;
+    padding: 28px 30px; width: 320px; text-align: center;
+  }
+  #loginCard .logo { font-size: 34px; }
+  #loginCard h2 { font-size: 15px; margin: 8px 0 16px; letter-spacing: .05em; }
+  #loginCard input {
+    width: 100%; background: var(--navy); color: var(--text);
+    border: 1px solid var(--navy-3); border-radius: 10px; padding: 10px 12px;
+    font: inherit; margin-bottom: 12px;
+  }
+  #loginCard input:focus { outline: none; border-color: var(--gold); }
+  #loginCard button { width: 100%; padding: 10px 0; }
+  #loginErr { color: var(--err); font-size: 12.5px; min-height: 18px; margin-bottom: 6px; }
 </style>
 </head>
 <body>
+<div id="loginOverlay">
+  <form id="loginCard">
+    <div class="logo">&#x1F590;</div>
+    <h2>HAMSA AGENT</h2>
+    <div id="loginErr"></div>
+    <input id="password" type="password" placeholder="Senha" autocomplete="current-password">
+    <button type="submit">Entrar</button>
+  </form>
+</div>
 <header>
   <span class="logo">&#x1F590;</span>
   <h1>HAMSA AGENT</h1>
@@ -98,7 +138,20 @@ const form = document.getElementById("form");
 const input = document.getElementById("input");
 const sendBtn = document.getElementById("sendBtn");
 const statusEl = document.getElementById("status");
+const loginOverlay = document.getElementById("loginOverlay");
 let sessionId = localStorage.getItem("hamsa-agent-session") || null;
+let authToken = localStorage.getItem("hamsa-agent-token") || "";
+
+function authHeaders(extra) {
+  const h = Object.assign({}, extra);
+  if (authToken) h["Authorization"] = "Bearer " + authToken;
+  return h;
+}
+async function api(path, opts = {}) {
+  const resp = await fetch(path, Object.assign({}, opts, { headers: authHeaders(opts.headers) }));
+  if (resp.status === 401) { loginOverlay.classList.add("show"); throw new Error("não autenticado"); }
+  return resp;
+}
 
 function el(cls, html) {
   const d = document.createElement("div");
@@ -107,22 +160,96 @@ function el(cls, html) {
   return d;
 }
 function scrollBottom(node) { node.scrollTop = node.scrollHeight; }
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
 
 function addActivity(cls, html) {
   activity.appendChild(el("act " + cls, html));
   scrollBottom(activity);
 }
 
-async function refreshFiles() {
-  if (!sessionId) return;
-  const r = await fetch(`/api/files/${sessionId}`);
-  const { files } = await r.json();
-  const list = document.getElementById("fileList");
-  list.innerHTML = files.length
-    ? files.map(f => `<a href="/api/files/${sessionId}/download?path=${encodeURIComponent(f)}">&#128196; ${f}</a>`).join("")
-    : "(nenhum ainda)";
+function addChatText(role, text) {
+  const d = el("msg " + (role === "user" ? "user" : "agent"),
+    `<div class="who">${role === "user" ? "Você" : "Hamsa Agent"}</div>`);
+  d.appendChild(document.createTextNode(text));
+  chat.appendChild(d);
 }
 
+async function refreshFiles() {
+  if (!sessionId) return;
+  try {
+    const r = await api(`/api/files/${sessionId}`);
+    const { files } = await r.json();
+    const list = document.getElementById("fileList");
+    const q = authToken ? `&token=${authToken}` : "";
+    list.innerHTML = files.length
+      ? files.map(f => `<a href="/api/files/${sessionId}/download?path=${encodeURIComponent(f)}${q}">&#128196; ${escapeHtml(f)}</a>`).join("")
+      : "(nenhum ainda)";
+  } catch { /* sem sessão ou sem auth */ }
+}
+
+async function loadHistory() {
+  if (!sessionId) return;
+  try {
+    const r = await api(`/api/history/${sessionId}`);
+    const { turns } = await r.json();
+    for (const t of turns) addChatText(t.role, t.text);
+    if (turns.length) scrollBottom(chat);
+  } catch { /* sem histórico */ }
+}
+
+// ---- login ----
+document.getElementById("loginCard").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const password = document.getElementById("password").value;
+  const resp = await fetch("/api/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ password }),
+  });
+  if (!resp.ok) {
+    document.getElementById("loginErr").textContent = "Senha incorreta.";
+    return;
+  }
+  const { token } = await resp.json();
+  authToken = token || "";
+  if (authToken) localStorage.setItem("hamsa-agent-token", authToken);
+  loginOverlay.classList.remove("show");
+  init();
+});
+
+// ---- aprovação de comandos ----
+function renderApproval(ev) {
+  const card = el("msg agent approval",
+    `<div class="who">Aprovação necessária</div>` +
+    `O agente quer executar:<code>${escapeHtml(ev.command)}</code>` +
+    `<div class="btns"><button class="ok">Aprovar</button><button class="deny">Negar</button></div>`);
+  card.dataset.approvalId = ev.id;
+  const decide = async (approved) => {
+    card.querySelectorAll("button").forEach(b => b.disabled = true);
+    try {
+      await api("/api/approve", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ approvalId: ev.id, approved }),
+      });
+    } catch { /* servidor decide por timeout */ }
+  };
+  card.querySelector("button.ok").onclick = () => decide(true);
+  card.querySelector("button.deny").onclick = () => decide(false);
+  chat.appendChild(card);
+  scrollBottom(chat);
+}
+
+function resolveApproval(ev) {
+  const card = chat.querySelector(`[data-approval-id="${ev.id}"]`);
+  if (!card) return;
+  card.querySelector(".btns").innerHTML =
+    `<span class="verdict ${ev.approved ? "ok" : "no"}">${ev.approved ? "✓ Aprovado" : "✗ Negado"}</span>`;
+}
+
+// ---- envio de tarefa ----
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
   const message = input.value.trim();
@@ -130,10 +257,7 @@ form.addEventListener("submit", async (e) => {
   input.value = "";
   sendBtn.disabled = true;
   statusEl.textContent = "trabalhando...";
-
-  const userDiv = el("msg user", '<div class="who">Você</div>');
-  userDiv.appendChild(document.createTextNode(message));
-  chat.appendChild(userDiv);
+  addChatText("user", message);
 
   let agentDiv = null, thinkDiv = null;
   const ensureAgentDiv = () => {
@@ -146,7 +270,7 @@ form.addEventListener("submit", async (e) => {
   scrollBottom(chat);
 
   try {
-    const resp = await fetch("/api/chat", {
+    const resp = await api("/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ sessionId, message }),
@@ -165,12 +289,13 @@ form.addEventListener("submit", async (e) => {
         const chunk = buffer.slice(0, idx);
         buffer = buffer.slice(idx + 2);
         if (!chunk.startsWith("data: ")) continue;
-        const ev = JSON.parse(chunk.slice(6));
-        handleEvent(ev);
+        handleEvent(JSON.parse(chunk.slice(6)));
       }
     }
   } catch (err) {
-    chat.appendChild(el("msg agent error", "Erro: " + err.message));
+    if (err.message !== "não autenticado") {
+      chat.appendChild(el("msg agent error", "Erro: " + escapeHtml(err.message)));
+    }
   } finally {
     sendBtn.disabled = false;
     statusEl.textContent = "pronto";
@@ -185,7 +310,6 @@ form.addEventListener("submit", async (e) => {
         localStorage.setItem("hamsa-agent-session", sessionId);
         break;
       case "text": {
-        // novo balão a cada rodada de texto após ferramentas
         const body = ensureAgentDiv();
         body.textContent += ev.text;
         scrollBottom(chat);
@@ -199,15 +323,23 @@ form.addEventListener("submit", async (e) => {
       case "tool_use": {
         agentDiv = null; thinkDiv = null; // próximo texto abre novo balão
         const inputStr = JSON.stringify(ev.input || {}, null, 0);
-        addActivity("", `<span class="tname">&#9881; ${ev.name}</span><pre>${escapeHtml(inputStr.slice(0, 600))}</pre>`);
+        addActivity("", `<span class="tname">&#9881; ${escapeHtml(ev.name)}</span><pre>${escapeHtml(inputStr.slice(0, 600))}</pre>`);
         statusEl.textContent = "executando: " + ev.name;
         break;
       }
       case "tool_result":
         addActivity("result" + (ev.is_error ? " err" : ""),
-          `<span class="tname">&#8627; ${ev.name}</span><pre>${escapeHtml(String(ev.summary || "").slice(0, 600))}</pre>`);
+          `<span class="tname">&#8627; ${escapeHtml(ev.name)}</span><pre>${escapeHtml(String(ev.summary || "").slice(0, 600))}</pre>`);
         statusEl.textContent = "trabalhando...";
         refreshFiles();
+        break;
+      case "approval_request":
+        statusEl.textContent = "aguardando sua aprovação";
+        renderApproval(ev);
+        break;
+      case "approval_resolved":
+        resolveApproval(ev);
+        statusEl.textContent = "trabalhando...";
         break;
       case "error":
         chat.appendChild(el("msg agent error", escapeHtml(ev.message)));
@@ -218,14 +350,23 @@ form.addEventListener("submit", async (e) => {
   }
 });
 
-function escapeHtml(s) {
-  return s.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-}
-
 input.addEventListener("keydown", (e) => {
   if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); form.requestSubmit(); }
 });
-refreshFiles();
+
+async function init() {
+  await loadHistory();
+  await refreshFiles();
+}
+
+(async () => {
+  const { required } = await (await fetch("/api/auth-required")).json();
+  if (required && !authToken) {
+    loginOverlay.classList.add("show");
+    return; // init() roda após o login
+  }
+  init();
+})();
 </script>
 </body>
 </html>

@@ -8,5 +8,8 @@ services:
     environment:
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - MODEL=${MODEL:-claude-opus-4-8}
+      - AGENT_PASSWORD=${AGENT_PASSWORD:-}
+      - APPROVAL_MODE=${APPROVAL_MODE:-sensitive}
     volumes:
       - ./workspace:/app/workspace
+      - ./sessions:/app/sessions
