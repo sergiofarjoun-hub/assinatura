@@ -29,6 +29,7 @@ const media = require('./media');
 const clientes = require('./clientes');
 const mailer = require('./mailer');
 const renovacoes = require('./renovacoes');
+const produtos = require('./produtos');
 
 const logger = pino({ level: process.env.LOG_LEVEL || 'warn' });
 
@@ -362,9 +363,11 @@ async function respond(sock, jid, text, admin, msg) {
   const wantsConcierge = !admin && raw.includes('[[HANDOFF]]');
   const clienteConfirmado = !admin && raw.includes('[[CLIENTE_CONFIRMADO]]');
   const docMatch = !admin ? raw.match(/\[\[SOLICITA_DOC:\s*([^\]]+)\]\]/i) : null;
+  const brochuraMatch = !admin ? raw.match(/\[\[SOLICITA_BROCHURA:\s*([^\]]+)\]\]/i) : null;
   let reply = raw
     .replace(/\s*\[\[(HANDOFF|CLIENTE_CONFIRMADO)\]\]\s*/g, '')
     .replace(/\s*\[\[SOLICITA_DOC:[^\]]*\]\]\s*/gi, '')
+    .replace(/\s*\[\[SOLICITA_BROCHURA:[^\]]*\]\]\s*/gi, '')
     .trim();
   // Garantia extra de formalidade: nenhum emoji vai para o cliente.
   if (!admin) reply = stripEmojis(reply);
@@ -402,6 +405,14 @@ async function respond(sock, jid, text, admin, msg) {
   if (docMatch) {
     await requestDocSend(sock, jid, docMatch[1].trim()).catch((e) =>
       console.error('Falha no pedido de documento:', e.message)
+    );
+  }
+
+  // PEDIDO DE BROCHURA DE PRODUTO: material de divulgação (não é documento
+  // pessoal do cliente) — envia direto, sem exigir cadastro confirmado.
+  if (brochuraMatch) {
+    await requestBrochuraSend(sock, jid, brochuraMatch[1].trim()).catch((e) =>
+      console.error('Falha no pedido de brochura:', e.message)
     );
   }
 
@@ -597,6 +608,41 @@ async function requestDocSend(sock, jid, termo) {
     console.error('Falha ao pedir aprovação de documento:', e.message)
   );
   emailOwner(`[Hamsa Bot] Aprovar envio de documento — ${quem}`, corpo);
+}
+
+// Pedido de BROCHURA de produto (material de divulgação da seguradora, não
+// documento pessoal do cliente). Busca no cofre de conhecimento — onde a
+// ingestão copia o PDF original de cada brochura — e envia direto ao cliente,
+// mesmo antes da confirmação do cadastro. Sempre registra ao dono.
+async function requestBrochuraSend(sock, jid, termo) {
+  const prof = store.getProfile(jid);
+  const quem = prof.nome ? `${prof.nome} (${numberOf(jid)})` : numberOf(jid);
+
+  const docs = produtos.findBrochura(termo);
+  if (!docs.length) {
+    const t =
+      `📄 *Pedido de brochura*\nCliente: ${quem}\nPedido: "${termo}"\n` +
+      `Não encontrei brochura em PDF para esse pedido na base de conhecimento. ` +
+      `Favor providenciar manualmente.`;
+    await notifyOwner(sock, t).catch(() => {});
+    emailOwner(`[Hamsa Bot] Brochura não encontrada — ${quem}`, t);
+    return;
+  }
+
+  const enviados = [];
+  for (const d of docs.slice(0, 2)) {
+    try {
+      await sendFileTo(sock, jid, d.path, d.name);
+      enviados.push(d.name);
+    } catch (e) {
+      console.error(`Falha ao enviar brochura ${d.name} a ${numberOf(jid)}:`, e.message);
+    }
+  }
+  const t =
+    `📄 *Brochura de produto enviada*\nCliente: ${quem}\nPedido: "${termo}"\n` +
+    `Enviado(s): ${enviados.join(', ') || '(nenhum — falha no envio)'}`;
+  await notifyOwner(sock, t).catch(() => {});
+  emailOwner(`[Hamsa Bot] Brochura enviada — ${quem}`, t);
 }
 
 // Envia um aviso ao dono (chat "você mesmo" e/ou números ADMIN configurados).

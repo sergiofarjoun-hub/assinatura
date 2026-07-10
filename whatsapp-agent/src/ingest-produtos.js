@@ -109,6 +109,34 @@ function collectPdfs(roots, depth = 3) {
   return out;
 }
 
+// Copia os PDFs de BROCHURAS (catálogo de produtos) para dentro do cofre, em
+// <kbDir>/<Seguradora>/Brochuras/. É o que permite o bot ENVIAR o PDF da
+// brochura ao cliente (não só explicar o conteúdo) — o cofre já é montado
+// (read-only) no container em produção. Só brochuras, nunca APOLICES
+// (contrato/condições), que não são para distribuição solta. Copia só o que
+// mudou (por tamanho); não copia PDFs escaneados gigantes (mesmo teto do
+// MAX_PDF_BYTES da destilação).
+function syncBrochuraPdfs(carrier, pdfs, kbDir) {
+  const brochuras = pdfs.filter((f) => f.brochura && f.size <= MAX_PDF_BYTES);
+  if (!brochuras.length) return 0;
+  const destDir = path.join(kbDir, carrier, 'Brochuras');
+  fs.mkdirSync(destDir, { recursive: true });
+  let copied = 0;
+  for (const f of brochuras) {
+    const dest = path.join(destDir, path.basename(f.path));
+    try {
+      const already = fs.existsSync(dest) && fs.statSync(dest).size === f.size;
+      if (!already) {
+        fs.copyFileSync(f.path, dest);
+        copied++;
+      }
+    } catch (err) {
+      console.warn(`  ! falha ao copiar brochura ${f.rel}: ${err.message}`);
+    }
+  }
+  return copied;
+}
+
 function carrierHash(pdfs) {
   const h = crypto.createHash('sha256');
   h.update(`v${KB_VERSION}\n`);
@@ -289,6 +317,9 @@ async function main() {
       console.log(`- ${carrier}: nenhum PDF nas pastas de foco — pulado`);
       continue;
     }
+
+    const copiadas = syncBrochuraPdfs(carrier, pdfs, kbDir);
+    if (copiadas > 0) console.log(`  ↳ ${copiadas} PDF(s) de brochura copiado(s) para o cofre`);
 
     const slug = slugify(carrier);
     const hash = carrierHash(pdfs);
