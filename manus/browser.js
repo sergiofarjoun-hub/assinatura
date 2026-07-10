@@ -63,11 +63,18 @@ async function getBrowser() {
         );
       }
       const { chromium } = await import("playwright-core");
-      return chromium.launch({
+      const browser = await chromium.launch({
         executablePath,
         headless: true,
         args: ["--no-sandbox", "--disable-dev-shm-usage"],
       });
+      // Se o Chromium morrer depois do launch (OOM, kill), a promise resolvida
+      // apontaria para um browser morto para sempre — reseta para relançar.
+      browser.on("disconnected", () => {
+        browserPromise = null;
+        pages.clear();
+      });
+      return browser;
     })();
     browserPromise.catch(() => {
       browserPromise = null; // permite nova tentativa após falha de launch

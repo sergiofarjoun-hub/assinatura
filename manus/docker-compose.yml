@@ -3,6 +3,8 @@ services:
     build: .
     container_name: hamsa-agent
     restart: unless-stopped
+    # init colhe os zumbis do Chromium e de comandos bash órfãos (node é PID 1 sem isso)
+    init: true
     ports:
       - "3010:3010"
     environment:
@@ -10,6 +12,7 @@ services:
       - MODEL=${MODEL:-claude-opus-4-8}
       - AGENT_PASSWORD=${AGENT_PASSWORD:-}
       - APPROVAL_MODE=${APPROVAL_MODE:-sensitive}
+      - CHROME_PATH=${CHROME_PATH:-/usr/bin/chromium}
     volumes:
       - ./workspace:/app/workspace
       - ./sessions:/app/sessions

@@ -174,6 +174,7 @@ function addChatText(role, text) {
     `<div class="who">${role === "user" ? "Você" : "Hamsa Agent"}</div>`);
   d.appendChild(document.createTextNode(text));
   chat.appendChild(d);
+  return d;
 }
 
 async function refreshFiles() {
@@ -189,13 +190,15 @@ async function refreshFiles() {
   } catch { /* sem sessão ou sem auth */ }
 }
 
+let historyLoaded = false; // evita duplicar o histórico num re-login pós-restart
 async function loadHistory() {
-  if (!sessionId) return;
+  if (!sessionId || historyLoaded) return;
   try {
     const r = await api(`/api/history/${sessionId}`);
     const { turns } = await r.json();
     for (const t of turns) addChatText(t.role, t.text);
     if (turns.length) scrollBottom(chat);
+    historyLoaded = true;
   } catch { /* sem histórico */ }
 }
 
@@ -227,14 +230,24 @@ function renderApproval(ev) {
     `<div class="btns"><button class="ok">Aprovar</button><button class="deny">Negar</button></div>`);
   card.dataset.approvalId = ev.id;
   const decide = async (approved) => {
-    card.querySelectorAll("button").forEach(b => b.disabled = true);
+    const btns = card.querySelectorAll("button");
+    btns.forEach(b => b.disabled = true);
     try {
-      await api("/api/approve", {
+      const resp = await api("/api/approve", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ approvalId: ev.id, approved }),
       });
-    } catch { /* servidor decide por timeout */ }
+      if (resp.status === 404) {
+        card.querySelector(".btns").innerHTML = '<span class="verdict no">aprovação expirada</span>';
+      } else if (!resp.ok) {
+        throw new Error("HTTP " + resp.status);
+      }
+    } catch {
+      // falha de rede/servidor: reabilita para o usuário tentar de novo
+      btns.forEach(b => b.disabled = false);
+      statusEl.textContent = "falha ao enviar decisão — tente de novo";
+    }
   };
   card.querySelector("button.ok").onclick = () => decide(true);
   card.querySelector("button.deny").onclick = () => decide(false);
@@ -252,12 +265,15 @@ function resolveApproval(ev) {
 // ---- envio de tarefa ----
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
+  // Enter dispara requestSubmit() mesmo com o botão desabilitado —
+  // sem este guard, um envio durante a tarefa geraria 409 e bagunçaria o estado
+  if (sendBtn.disabled) return;
   const message = input.value.trim();
   if (!message) return;
   input.value = "";
   sendBtn.disabled = true;
   statusEl.textContent = "trabalhando...";
-  addChatText("user", message);
+  const userDiv = addChatText("user", message);
 
   let agentDiv = null, thinkDiv = null;
   const ensureAgentDiv = () => {
@@ -269,6 +285,7 @@ form.addEventListener("submit", async (e) => {
   };
   scrollBottom(chat);
 
+  let accepted = false; // o servidor aceitou a tarefa (stream aberto)?
   try {
     const resp = await api("/api/chat", {
       method: "POST",
@@ -276,6 +293,7 @@ form.addEventListener("submit", async (e) => {
       body: JSON.stringify({ sessionId, message }),
     });
     if (!resp.ok) throw new Error((await resp.json()).error || resp.statusText);
+    accepted = true;
 
     const reader = resp.body.getReader();
     const decoder = new TextDecoder();
@@ -293,6 +311,12 @@ form.addEventListener("submit", async (e) => {
       }
     }
   } catch (err) {
+    if (!accepted) {
+      // Falhou antes de chegar ao agente (401/409): devolve a mensagem ao
+      // campo para o usuário reenviar após logar / a sessão liberar
+      userDiv.remove();
+      input.value = message;
+    }
     if (err.message !== "não autenticado") {
       chat.appendChild(el("msg agent error", "Erro: " + escapeHtml(err.message)));
     }

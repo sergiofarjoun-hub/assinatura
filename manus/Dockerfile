@@ -4,7 +4,7 @@ FROM node:22-bookworm-slim
 # + chromium para a ferramenta de navegador (playwright-core usa o binário do sistema)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     bash git curl ca-certificates python3 unzip jq \
-    chromium fonts-liberation \
+    chromium fonts-liberation fonts-noto-color-emoji \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

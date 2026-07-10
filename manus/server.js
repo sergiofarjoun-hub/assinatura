@@ -15,7 +15,7 @@ import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
-import { BROWSER_TOOL, runBrowser } from "./browser.js";
+import { BROWSER_TOOL, runBrowser, closeBrowserSession } from "./browser.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const execAsync = promisify(exec);
@@ -78,9 +78,29 @@ function getSession(id) {
     } catch {
       /* sessão nova ou arquivo corrompido — começa vazia */
     }
+    repairDanglingToolUse(messages);
     sessions.set(id, { messages, busy: false });
   }
   return sessions.get(id);
+}
+
+// Se o processo caiu entre persistir o assistant(tool_use) e os tool_results,
+// o histórico termina "pendurado" e a API recusaria toda mensagem futura (400).
+// Fecha cada tool_use órfão com um tool_result de erro sintético.
+function repairDanglingToolUse(messages) {
+  const last = messages[messages.length - 1];
+  if (!last || last.role !== "assistant" || !Array.isArray(last.content)) return;
+  const toolUses = last.content.filter((b) => b.type === "tool_use");
+  if (!toolUses.length) return;
+  messages.push({
+    role: "user",
+    content: toolUses.map((tu) => ({
+      type: "tool_result",
+      tool_use_id: tu.id,
+      content: "Execução interrompida por reinício do servidor; o resultado se perdeu.",
+      is_error: true,
+    })),
+  });
 }
 
 function persistSession(id, session) {
@@ -135,6 +155,7 @@ const SENSITIVE_PATTERNS = [
   /\bwget\b[^|>]*--post/i,
   /\bnpm\s+publish\b|\bpip\s+upload\b/,
   /\bchmod\s+777\b/,
+  /\|\s*(bash|sh|zsh|dash|python3?|node|perl|ruby)\b/, // download-and-run: curl ... | bash
 ];
 
 function needsApproval(command) {
@@ -147,6 +168,9 @@ const pendingApprovals = new Map(); // approvalId -> resolve(boolean)
 
 function requestApproval(send, command, signal) {
   return new Promise((resolve) => {
+    // Listeners adicionados a um signal JÁ abortado nunca disparam;
+    // sem este check a aprovação ficaria pendente até o timeout.
+    if (signal.aborted) return resolve(false);
     const id = crypto.randomUUID();
     const finish = (approved) => {
       clearTimeout(timer);
@@ -175,6 +199,17 @@ function safePath(ws, p) {
     throw new Error(`Caminho fora do workspace: ${p}`);
   }
   return abs;
+}
+
+// Como safePath, mas segue symlinks: um link criado dentro do workspace
+// apontando para fora não pode virar leitura de arquivo arbitrário no download.
+function safeRealPath(ws, p) {
+  const real = fs.realpathSync(safePath(ws, p));
+  const wsReal = fs.realpathSync(ws);
+  if (real !== wsReal && !real.startsWith(wsReal + path.sep)) {
+    throw new Error(`Caminho fora do workspace: ${p}`);
+  }
+  return real;
 }
 
 function truncate(text) {
@@ -409,7 +444,7 @@ app.get("/api/files/:sessionId/download", requireAuth, (req, res) => {
   const id = sanitizeId(req.params.sessionId);
   const ws = path.join(WORKSPACES_ROOT, id);
   try {
-    res.download(safePath(ws, String(req.query.path || "")));
+    res.download(safeRealPath(ws, String(req.query.path || "")));
   } catch {
     res.status(400).json({ error: "caminho inválido" });
   }
@@ -425,22 +460,27 @@ app.post("/api/chat", requireAuth, async (req, res) => {
   if (session.busy) return res.status(409).json({ error: "sessão ocupada — aguarde a tarefa atual terminar" });
   session.busy = true;
 
-  res.writeHead(200, {
-    "Content-Type": "text/event-stream; charset=utf-8",
-    "Cache-Control": "no-cache",
-    Connection: "keep-alive",
-    "X-Accel-Buffering": "no",
-  });
   const send = (event) => res.write(`data: ${JSON.stringify(event)}\n\n`);
-  send({ type: "session", sessionId: id });
-
   const abort = new AbortController();
-  req.on("close", () => abort.abort());
+  // O 'close' de req dispara assim que o BODY é consumido (Node >= 16), não
+  // quando o cliente cai — usamos o 'close' da RESPOSTA, que só ocorre no fim
+  // real da conexão; writableEnded distingue término normal de desconexão.
+  res.on("close", () => {
+    if (!res.writableEnded) abort.abort();
+  });
 
-  const ctx = { ws: workspaceFor(id), sessionId: id, send, signal: abort.signal };
-  session.messages.push({ role: "user", content: message });
-  persistSession(id, session);
   try {
+    res.writeHead(200, {
+      "Content-Type": "text/event-stream; charset=utf-8",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+      "X-Accel-Buffering": "no",
+    });
+    send({ type: "session", sessionId: id });
+
+    const ctx = { ws: workspaceFor(id), sessionId: id, send, signal: abort.signal };
+    session.messages.push({ role: "user", content: message });
+    persistSession(id, session);
     await runAgent(id, session, ctx);
     send({ type: "done" });
   } catch (err) {
@@ -450,6 +490,7 @@ app.post("/api/chat", requireAuth, async (req, res) => {
     session.busy = false;
     persistSession(id, session);
     res.end();
+    closeBrowserSession(id).catch(() => {});
   }
 });
 
