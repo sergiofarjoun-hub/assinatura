@@ -350,6 +350,14 @@ function walkFiles(dir, depth, cb, rel) {
 
 // Encontra arquivos na pasta do cliente que casam com o termo pedido. Só para
 // cliente localizado (resolveFolder). Retorna [{ path, name, rel }] até `limit`.
+//
+// Documentos de apólice/carteirinha podem existir de VÁRIAS renovações na
+// mesma pasta (ex.: certificado do plano antigo e do atual). Sem priorizar,
+// a ordem do sistema de arquivos pode trazer o antigo primeiro e o bot manda
+// o documento errado. Por isso: se soubermos a apólice ATUAL do cliente
+// (profile.apolice, vinda do renovacoes.db), arquivos cujo nome contém esse
+// número vêm primeiro; arquivos com outro número de apólice (não o atual)
+// vão para o fim; o resto fica no meio. Em empate, o mais recente primeiro.
 function findDocuments(profile, query, limit = 8) {
   if (!enabled()) return [];
   const match = resolveFolder(profile || {});
@@ -363,6 +371,23 @@ function findDocuments(profile, query, limit = 8) {
     const hay = norm(`${rel} ${name}`);
     if (terms.some((t) => hay.includes(t))) out.push({ path: full, name, rel });
   });
+
+  const curDig = (profile && profile.apolice ? String(profile.apolice) : '').replace(/\D/g, '');
+  const rank = (d) => {
+    const nums = d.name.match(/\d{6,}/g) || [];
+    if (!nums.length) return 1; // sem número de apólice no nome: neutro
+    if (curDig && nums.some((n) => n.includes(curDig) || curDig.includes(n))) return 0; // apólice atual
+    return 2; // tem número de apólice, mas não é o atual: provavelmente antigo
+  };
+  const mtime = (d) => {
+    try {
+      return fs.statSync(d.path).mtimeMs;
+    } catch {
+      return 0;
+    }
+  };
+  out.sort((a, b) => rank(a) - rank(b) || mtime(b) - mtime(a));
+
   return out.slice(0, limit);
 }
 
