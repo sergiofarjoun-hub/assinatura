@@ -21,11 +21,6 @@ do Android, sem barra do navegador) aos apps Hamsa. Produzidos a partir do símb
 > real, 4 apps já tinham manifest próprio (só trocamos os ícones) e Renovações/
 > Claims ganharam `manifest.json` gerado pelos scripts em `nas/`.
 
-> 🗄️ **Próximo projeto — banco unificado:** um PostgreSQL único no NAS com os
-> cadastros mestres (cliente, apólice, seguradora, produto) consumido pelos 6
-> apps, eliminando cópias divergentes. Arquitetura, fases e scripts em
-> [`DATABASE.md`](DATABASE.md) e [`nas/db/`](nas/db/).
-
 ## O que tem aqui
 
 ```

@@ -1,23 +1,26 @@
 #!/bin/sh
-# FASE DB0 — Inventário de armazenamento dos apps (SOMENTE LEITURA)
+# INVENTÁRIO — onde cada app guarda dados hoje (SOMENTE LEITURA)
+# Subsídio para as fases de import/sync do banco unificado (ver ARQUITETURA.md):
+# antes de importar clientes/apólices para cadastro.* e comissoes.*, é preciso
+# saber a fonte em cada app (SQLite? JSON? CSV? Postgres?).
 # Nada é alterado. A saída responde:
-#   1. Onde cada app guarda dados hoje (SQLite? JSON? CSV? Postgres?)
-#   2. A porta 5432 está livre no NAS?
-#   3. Já existe algum Postgres em container (ex.: embutido no DocuSeal)?
-# Com isso se decide a fonte da carga inicial dos mestres (Fase DB3).
+#   1. Onde cada app persiste dados hoje
+#   2. Quem ocupa a porta 5432 (esperado: hamsa-comissoes-db, se a fase 0 de
+#      Comissões já rodou — nas/comissoes-fase0.sh)
+#   3. Que outros bancos em container existem no NAS (ex.: o do DocuSeal)
 #
-# Uso (no NAS): sudo sh /tmp/fase-db0-inspect-storage.sh | tee /tmp/db0-resultado.txt
+# Uso (no NAS): sudo sh /tmp/inventario-storage-apps.sh | tee /tmp/inventario-resultado.txt
 
-echo "===== FASE DB0 — inventario de dados (somente leitura) ====="
+echo "===== INVENTÁRIO de storage dos apps (somente leitura) ====="
 echo "data: $(date)"
 
 echo ""
 echo "== 1/4 Porta 5432 e containers =="
 if netstat -tln 2>/dev/null | grep -q ':5432 '; then
-  echo "   ATENCAO: a porta 5432 JA ESTA EM USO no NAS:"
+  echo "   porta 5432 em uso (esperado se hamsa-comissoes-db ja subiu):"
   netstat -tlnp 2>/dev/null | grep ':5432 ' || netstat -tln | grep ':5432 '
 else
-  echo "   porta 5432 livre"
+  echo "   porta 5432 livre (fase 0 de Comissoes ainda nao rodou)"
 fi
 echo ""
 echo "   containers ativos:"
@@ -71,6 +74,6 @@ echo "== 4/4 Espaco em disco =="
 df -h /volume1 2>/dev/null | tail -1
 
 echo ""
-echo "===== FIM DB0 — nada foi alterado ====="
-echo "Proximo passo: com esta saida em maos, decidir a fonte da carga (DB3)"
-echo "e rodar a Fase DB1 (fase-db1-provision.sh) se a 5432 estiver livre."
+echo "===== FIM — nada foi alterado ====="
+echo "Com esta saida em maos: planejar o import/sync de cada modulo"
+echo "(cadastro.pessoa/cliente, comissoes.apolice — ver ARQUITETURA.md)."
