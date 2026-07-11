@@ -360,12 +360,15 @@ async function respond(sock, jid, text, admin, msg) {
   // Marcadores internos do agente (removidos antes de enviar ao cliente):
   //  [[HANDOFF]]            -> cliente quer o Concierge (pausa + avisa dono)
   //  [[CLIENTE_CONFIRMADO]] -> cliente confirmou o cadastro (arquiva documentos)
-  const wantsConcierge = !admin && raw.includes('[[HANDOFF]]');
+  const handoffMatch = !admin ? raw.match(/\[\[HANDOFF(?::\s*([^\]]+))?\]\]/i) : null;
+  const wantsConcierge = !!handoffMatch;
+  const handoffPendencias = (handoffMatch && handoffMatch[1] ? handoffMatch[1] : '').trim();
   const clienteConfirmado = !admin && raw.includes('[[CLIENTE_CONFIRMADO]]');
   const docMatch = !admin ? raw.match(/\[\[SOLICITA_DOC:\s*([^\]]+)\]\]/i) : null;
   const brochuraMatch = !admin ? raw.match(/\[\[SOLICITA_BROCHURA:\s*([^\]]+)\]\]/i) : null;
   let reply = raw
-    .replace(/\s*\[\[(HANDOFF|CLIENTE_CONFIRMADO)\]\]\s*/g, '')
+    .replace(/\s*\[\[HANDOFF[^\]]*\]\]\s*/gi, '')
+    .replace(/\s*\[\[CLIENTE_CONFIRMADO\]\]\s*/g, '')
     .replace(/\s*\[\[SOLICITA_DOC:[^\]]*\]\]\s*/gi, '')
     .replace(/\s*\[\[SOLICITA_BROCHURA:[^\]]*\]\]\s*/gi, '')
     .trim();
@@ -394,6 +397,7 @@ async function respond(sock, jid, text, admin, msg) {
     const t =
       `🔔 *Concierge solicitado*\nCliente: ${quem}` +
       (prof.apolice ? `\nApólice: ${prof.apolice}` : '') +
+      (handoffPendencias ? `\n*Pendências:* ${handoffPendencias}` : '') +
       `\nO cliente pediu atendimento humano. O assistente continua disponível ` +
       `caso ele siga escrevendo; assuma a conversa quando puder.`;
     await notifyOwner(sock, t).catch((e) => console.error('Falha ao notificar dono:', e.message));
