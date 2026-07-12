@@ -130,6 +130,10 @@ function syncBrochuraPdfs(carrier, pdfs, kbDir) {
         fs.copyFileSync(f.path, dest);
         copied++;
       }
+      // Preserva a data original do arquivo na cópia (copyFileSync usa a data
+      // atual). O envio ao cliente usa essa data para desempatar entre edições
+      // da mesma brochura — sem isso, uma edição de anos atrás pode "ganhar".
+      fs.utimesSync(dest, new Date(), new Date(f.mtimeMs));
     } catch (err) {
       console.warn(`  ! falha ao copiar brochura ${f.rel}: ${err.message}`);
     }

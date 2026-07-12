@@ -60,14 +60,29 @@ function findBrochura(query, limit = 5) {
     const score = qtokens.filter((t) => hay.includes(t)).length;
     if (score > 0) out.push({ path: full, name, rel, score });
   });
-  out.sort((a, b) => {
-    if (b.score !== a.score) return b.score - a.score;
+
+  // SEMPRE a edição mais recente: várias edições da mesma brochura convivem na
+  // pasta (2023, 2024...). Desempate por (1) ano mais alto citado no nome/pasta
+  // e (2) data do arquivo — nunca enviar edição antiga havendo mais nova.
+  const year = (d) => {
+    const m = `${d.rel} ${d.name}`.match(/20\d{2}/g);
+    return m ? Math.max(...m.map(Number)) : 0;
+  };
+  const mtime = (d) => {
     try {
-      return fs.statSync(b.path).mtimeMs - fs.statSync(a.path).mtimeMs;
+      return fs.statSync(d.path).mtimeMs;
     } catch {
       return 0;
     }
+  };
+  out.sort((a, b) => {
+    if (b.score !== a.score) return b.score - a.score;
+    const ya = year(a);
+    const yb = year(b);
+    if (ya && yb && ya !== yb) return yb - ya;
+    return mtime(b) - mtime(a);
   });
+
   return out.slice(0, limit);
 }
 

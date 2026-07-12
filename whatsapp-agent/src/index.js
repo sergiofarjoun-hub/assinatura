@@ -385,6 +385,14 @@ async function respond(sock, jid, text, admin, msg) {
     const prof = store.setProfile(jid, { confirmed: true });
     const moved = clientes.moveRetained(numberOf(jid), prof);
     if (moved > 0) console.log(`${moved} documento(s) movido(s) para a pasta de ${prof.nome}.`);
+    // Identifica o plano JÁ na confirmação (não espera a próxima mensagem) —
+    // senão o bot responde à confirmação sem saber o plano e cai na tentação
+    // de perguntar ao cliente algo que ele mesmo descobre no banco.
+    if (!prof.planoFromDb && clientes.resolveFolder(prof)) {
+      await resolveClientPlan(jid, prof).catch((e) =>
+        console.error('Falha ao identificar plano na confirmação:', e.message)
+      );
+    }
   }
 
   if (wantsConcierge) {
@@ -622,7 +630,10 @@ async function requestBrochuraSend(sock, jid, termo) {
   const prof = store.getProfile(jid);
   const quem = prof.nome ? `${prof.nome} (${numberOf(jid)})` : numberOf(jid);
 
-  const docs = produtos.findBrochura(termo);
+  // Enriquece a busca com a operadora e o plano do cadastro (última renovação):
+  // "a brochura do meu plano" vira uma busca pelo produto certo do cliente.
+  const termoBusca = [termo, prof.operadora, prof.plano].filter(Boolean).join(' ');
+  const docs = produtos.findBrochura(termoBusca);
   if (!docs.length) {
     const t =
       `📄 *Pedido de brochura*\nCliente: ${quem}\nPedido: "${termo}"\n` +
@@ -633,8 +644,10 @@ async function requestBrochuraSend(sock, jid, termo) {
     return;
   }
 
+  // Envia SÓ a melhor (edição mais recente do produto certo). Mandar mais de
+  // uma arrisca entregar junto uma edição antiga da mesma brochura.
   const enviados = [];
-  for (const d of docs.slice(0, 2)) {
+  for (const d of docs.slice(0, 1)) {
     try {
       await sendFileTo(sock, jid, d.path, d.name);
       enviados.push(d.name);
