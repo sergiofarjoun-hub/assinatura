@@ -649,12 +649,14 @@ async function requestBrochuraSend(sock, jid, termo) {
   emailOwner(`[Hamsa Bot] Brochura enviada — ${quem}`, t);
 }
 
-// Envia um aviso ao dono (chat "você mesmo" e/ou números ADMIN configurados).
+// Envia um aviso ao dono: chat "você mesmo" do número do bot, números ADMIN e
+// números NOTIFY (avisos sem virar admin — ex.: o celular pessoal do dono).
 async function notifyOwner(sock, text) {
   const selfJid = jidNormalizedUser(sock.user?.id || '');
   const targets = new Set();
   if (selfJid) targets.add(selfJid);
   for (const n of config.adminNumbers) targets.add(`${n}@s.whatsapp.net`);
+  for (const n of config.notifyNumbers) targets.add(`${n}@s.whatsapp.net`);
   for (const t of targets) {
     await sendText(sock, t, text).catch(() => {});
   }

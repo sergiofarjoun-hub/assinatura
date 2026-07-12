@@ -28,6 +28,11 @@ const config = {
   // Formato: só dígitos com DDI, separados por vírgula. Ex.: 5511999999999
   adminNumbers: parseNumbers(process.env.ADMIN_NUMBERS),
 
+  // Números que RECEBEM os avisos do bot (🔔 concierge, documentos etc.) sem
+  // virar admin — o atendimento deles segue normal (modo cliente). Use para o
+  // celular pessoal do dono. Mesmo formato do ADMIN_NUMBERS.
+  notifyNumbers: parseNumbers(process.env.NOTIFY_NUMBERS),
+
   // Modo de atendimento a clientes:
   //   all       -> responde qualquer número que mandar mensagem
   //   allowlist -> responde só ALLOWED_NUMBERS
