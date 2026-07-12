@@ -76,10 +76,11 @@ function focusPaths(carrierPath) {
 }
 
 // Lista PDFs (recursivo, raso) dentro de um conjunto de pastas. Marca os que
-// vêm de uma pasta de BROCHURAS (catálogo de produtos — prioridade na leitura).
+// vêm de uma pasta de BROCHURAS (catálogo de produtos — prioridade na leitura)
+// e os de APOLICES (condições gerais do produto, renovadas a cada ano).
 function collectPdfs(roots, depth = 3) {
   const out = [];
-  const walk = (dir, rel, d, isBro) => {
+  const walk = (dir, rel, d, isBro, isApo) => {
     let entries;
     try {
       entries = fs.readdirSync(dir, { withFileTypes: true });
@@ -91,11 +92,18 @@ function collectPdfs(roots, depth = 3) {
       const full = path.join(dir, e.name);
       const r = rel ? path.join(rel, e.name) : e.name;
       if (e.isDirectory()) {
-        if (d > 0) walk(full, r, d - 1, isBro);
+        if (d > 0) walk(full, r, d - 1, isBro, isApo);
       } else if (e.isFile() && e.name.toLowerCase().endsWith('.pdf')) {
         try {
           const st = fs.statSync(full);
-          out.push({ path: full, rel: r, size: st.size, mtimeMs: st.mtimeMs, brochura: isBro });
+          out.push({
+            path: full,
+            rel: r,
+            size: st.size,
+            mtimeMs: st.mtimeMs,
+            brochura: isBro,
+            apolice: isApo,
+          });
         } catch {
           /* ignora */
         }
@@ -103,39 +111,45 @@ function collectPdfs(roots, depth = 3) {
     }
   };
   for (const root of roots) {
-    const isBro = norm(path.basename(root)).includes('brochura');
-    walk(root, path.basename(root), depth, isBro);
+    const n = norm(path.basename(root));
+    walk(root, path.basename(root), depth, n.includes('brochura'), n.includes('apolice'));
   }
   return out;
 }
 
-// Copia os PDFs de BROCHURAS (catálogo de produtos) para dentro do cofre, em
-// <kbDir>/<Seguradora>/Brochuras/. É o que permite o bot ENVIAR o PDF da
-// brochura ao cliente (não só explicar o conteúdo) — o cofre já é montado
-// (read-only) no container em produção. Só brochuras, nunca APOLICES
-// (contrato/condições), que não são para distribuição solta. Copia só o que
-// mudou (por tamanho); não copia PDFs escaneados gigantes (mesmo teto do
+// Copia os PDFs originais para dentro do cofre — BROCHURAS (catálogo de
+// produtos) em <kbDir>/<Seguradora>/Brochuras/ e APOLICES (condições gerais do
+// produto, atualizadas a cada ano) em <kbDir>/<Seguradora>/Apolices/. É o que
+// permite o bot ENVIAR o PDF ao cliente (não só explicar o conteúdo) — o cofre
+// já é montado (read-only) no container em produção. Copia só o que mudou
+// (por tamanho); não copia PDFs escaneados gigantes (mesmo teto do
 // MAX_PDF_BYTES da destilação).
-function syncBrochuraPdfs(carrier, pdfs, kbDir) {
-  const brochuras = pdfs.filter((f) => f.brochura && f.size <= MAX_PDF_BYTES);
-  if (!brochuras.length) return 0;
-  const destDir = path.join(kbDir, carrier, 'Brochuras');
-  fs.mkdirSync(destDir, { recursive: true });
+function syncProdutoPdfs(carrier, pdfs, kbDir) {
+  const grupos = [
+    { flag: 'brochura', pasta: 'Brochuras' },
+    { flag: 'apolice', pasta: 'Apolices' },
+  ];
   let copied = 0;
-  for (const f of brochuras) {
-    const dest = path.join(destDir, path.basename(f.path));
-    try {
-      const already = fs.existsSync(dest) && fs.statSync(dest).size === f.size;
-      if (!already) {
-        fs.copyFileSync(f.path, dest);
-        copied++;
+  for (const g of grupos) {
+    const files = pdfs.filter((f) => f[g.flag] && f.size <= MAX_PDF_BYTES);
+    if (!files.length) continue;
+    const destDir = path.join(kbDir, carrier, g.pasta);
+    fs.mkdirSync(destDir, { recursive: true });
+    for (const f of files) {
+      const dest = path.join(destDir, path.basename(f.path));
+      try {
+        const already = fs.existsSync(dest) && fs.statSync(dest).size === f.size;
+        if (!already) {
+          fs.copyFileSync(f.path, dest);
+          copied++;
+        }
+        // Preserva a data original do arquivo na cópia (copyFileSync usa a
+        // data atual). O envio ao cliente usa essa data para desempatar entre
+        // edições — sem isso, uma edição de anos atrás pode "ganhar".
+        fs.utimesSync(dest, new Date(), new Date(f.mtimeMs));
+      } catch (err) {
+        console.warn(`  ! falha ao copiar ${g.pasta.toLowerCase()} ${f.rel}: ${err.message}`);
       }
-      // Preserva a data original do arquivo na cópia (copyFileSync usa a data
-      // atual). O envio ao cliente usa essa data para desempatar entre edições
-      // da mesma brochura — sem isso, uma edição de anos atrás pode "ganhar".
-      fs.utimesSync(dest, new Date(), new Date(f.mtimeMs));
-    } catch (err) {
-      console.warn(`  ! falha ao copiar brochura ${f.rel}: ${err.message}`);
     }
   }
   return copied;
@@ -322,8 +336,8 @@ async function main() {
       continue;
     }
 
-    const copiadas = syncBrochuraPdfs(carrier, pdfs, kbDir);
-    if (copiadas > 0) console.log(`  ↳ ${copiadas} PDF(s) de brochura copiado(s) para o cofre`);
+    const copiadas = syncProdutoPdfs(carrier, pdfs, kbDir);
+    if (copiadas > 0) console.log(`  ↳ ${copiadas} PDF(s) (brochuras/apólices) copiado(s) para o cofre`);
 
     const slug = slugify(carrier);
     const hash = carrierHash(pdfs);

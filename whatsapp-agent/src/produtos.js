@@ -44,18 +44,18 @@ function walkPdfs(dir, depth, cb, rel) {
   }
 }
 
-// Acha brochuras de produto que casam com o pedido (ex.: "brochura VUMI",
-// "produto Universal da Ever"). Pontua por número de termos casados (nome da
-// seguradora, do produto etc.) contra a subpasta + nome do arquivo; em
-// empate, o arquivo mais recente primeiro. Só considera o que a ingestão
-// copiou para Brochuras/ (nunca a pasta de apólices/contratos).
-function findBrochura(query, limit = 5) {
+// Acha documentos de produto que casam com o pedido (ex.: "brochura VUMI",
+// "condições gerais Universal"). Pontua por número de termos casados (nome da
+// seguradora, do produto etc.) contra a subpasta + nome do arquivo. `kind`
+// escolhe onde procurar: 'brochura' (Brochuras/, material de divulgação) ou
+// 'apolice' (Apolices/, condições gerais do produto — edição anual).
+function findDoc(query, kind, limit = 5) {
   if (!enabled()) return [];
   const qtokens = norm(query).split(' ').filter(Boolean);
   if (!qtokens.length) return [];
   const out = [];
   walkPdfs(config.produtosKbDir, 4, (full, rel, name) => {
-    if (!norm(rel).includes('brochura')) return;
+    if (!norm(rel).includes(kind)) return;
     const hay = norm(`${rel} ${name}`);
     const score = qtokens.filter((t) => hay.includes(t)).length;
     if (score > 0) out.push({ path: full, name, rel, score });
@@ -86,4 +86,14 @@ function findBrochura(query, limit = 5) {
   return out.slice(0, limit);
 }
 
-module.exports = { enabled, findBrochura };
+function findBrochura(query, limit = 5) {
+  return findDoc(query, 'brochura', limit);
+}
+
+// Condições gerais / texto da apólice do PRODUTO (edição do ano vigente).
+// NÃO confundir com o certificado/apólice PESSOAL do cliente (pasta dele).
+function findApolice(query, limit = 5) {
+  return findDoc(query, 'apolice', limit);
+}
+
+module.exports = { enabled, findBrochura, findApolice };

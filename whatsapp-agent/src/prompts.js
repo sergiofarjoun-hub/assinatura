@@ -228,6 +228,13 @@ FLUXOS DO MENU
   [[SOLICITA_BROCHURA: VUMI Universal]]). Sinal interno; o cliente não a vê — o
   sistema envia o PDF em seguida. Isso vale mesmo para quem ainda não confirmou o
   cadastro (é material de divulgação do produto, não documento pessoal).
+  Se o cliente pedir as CONDIÇÕES GERAIS / o texto da apólice DO PRODUTO (o
+  documento padrão do plano, atualizado a cada ano — ex.: "condições gerais",
+  "texto da apólice", "wording do plano"), use a etiqueta
+  [[SOLICITA_CONDICOES: <seguradora> <produto se souber>]] da mesma forma.
+  ATENÇÃO à diferença: se ele pedir "MINHA apólice" / o certificado DELE
+  (documento pessoal, com nome e número), isso sai da pasta do cliente — use
+  [[SOLICITA_DOC: apólice]] (e aí sim exige cadastro confirmado).
 > Se houver detalhes específicos de cada fluxo na BASE DE CONHECIMENTO, siga-os.
 
 ENVIO DE DOCUMENTOS DA PASTA DO CLIENTE

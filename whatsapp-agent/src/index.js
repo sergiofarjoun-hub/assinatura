@@ -366,11 +366,13 @@ async function respond(sock, jid, text, admin, msg) {
   const clienteConfirmado = !admin && raw.includes('[[CLIENTE_CONFIRMADO]]');
   const docMatch = !admin ? raw.match(/\[\[SOLICITA_DOC:\s*([^\]]+)\]\]/i) : null;
   const brochuraMatch = !admin ? raw.match(/\[\[SOLICITA_BROCHURA:\s*([^\]]+)\]\]/i) : null;
+  const condicoesMatch = !admin ? raw.match(/\[\[SOLICITA_CONDICOES:\s*([^\]]+)\]\]/i) : null;
   let reply = raw
     .replace(/\s*\[\[HANDOFF[^\]]*\]\]\s*/gi, '')
     .replace(/\s*\[\[CLIENTE_CONFIRMADO\]\]\s*/g, '')
     .replace(/\s*\[\[SOLICITA_DOC:[^\]]*\]\]\s*/gi, '')
     .replace(/\s*\[\[SOLICITA_BROCHURA:[^\]]*\]\]\s*/gi, '')
+    .replace(/\s*\[\[SOLICITA_CONDICOES:[^\]]*\]\]\s*/gi, '')
     .trim();
   // Garantia extra de formalidade: nenhum emoji vai para o cliente.
   if (!admin) reply = stripEmojis(reply);
@@ -423,8 +425,16 @@ async function respond(sock, jid, text, admin, msg) {
   // PEDIDO DE BROCHURA DE PRODUTO: material de divulgação (não é documento
   // pessoal do cliente) — envia direto, sem exigir cadastro confirmado.
   if (brochuraMatch) {
-    await requestBrochuraSend(sock, jid, brochuraMatch[1].trim()).catch((e) =>
+    await requestBrochuraSend(sock, jid, brochuraMatch[1].trim(), 'brochura').catch((e) =>
       console.error('Falha no pedido de brochura:', e.message)
+    );
+  }
+
+  // PEDIDO DE CONDIÇÕES GERAIS do produto (texto da apólice do ano vigente —
+  // não o certificado pessoal do cliente, que sai da pasta dele).
+  if (condicoesMatch) {
+    await requestBrochuraSend(sock, jid, condicoesMatch[1].trim(), 'apolice').catch((e) =>
+      console.error('Falha no pedido de condições gerais:', e.message)
     );
   }
 
@@ -622,25 +632,27 @@ async function requestDocSend(sock, jid, termo) {
   emailOwner(`[Hamsa Bot] Aprovar envio de documento — ${quem}`, corpo);
 }
 
-// Pedido de BROCHURA de produto (material de divulgação da seguradora, não
-// documento pessoal do cliente). Busca no cofre de conhecimento — onde a
-// ingestão copia o PDF original de cada brochura — e envia direto ao cliente,
-// mesmo antes da confirmação do cadastro. Sempre registra ao dono.
-async function requestBrochuraSend(sock, jid, termo) {
+// Pedido de material de PRODUTO (não é documento pessoal do cliente): brochura
+// (divulgação) ou condições gerais/apólice do produto (edição do ano vigente).
+// Busca no cofre de conhecimento — onde a ingestão copia os PDFs originais — e
+// envia direto ao cliente, mesmo antes da confirmação do cadastro. Sempre
+// registra ao dono.
+async function requestBrochuraSend(sock, jid, termo, kind = 'brochura') {
   const prof = store.getProfile(jid);
   const quem = prof.nome ? `${prof.nome} (${numberOf(jid)})` : numberOf(jid);
+  const rotulo = kind === 'apolice' ? 'Condições gerais (apólice do produto)' : 'Brochura';
 
   // Enriquece a busca com a operadora e o plano do cadastro (última renovação):
   // "a brochura do meu plano" vira uma busca pelo produto certo do cliente.
   const termoBusca = [termo, prof.operadora, prof.plano].filter(Boolean).join(' ');
-  const docs = produtos.findBrochura(termoBusca);
+  const docs =
+    kind === 'apolice' ? produtos.findApolice(termoBusca) : produtos.findBrochura(termoBusca);
   if (!docs.length) {
     const t =
-      `📄 *Pedido de brochura*\nCliente: ${quem}\nPedido: "${termo}"\n` +
-      `Não encontrei brochura em PDF para esse pedido na base de conhecimento. ` +
-      `Favor providenciar manualmente.`;
+      `📄 *Pedido de material de produto*\nCliente: ${quem}\nPedido: "${termo}" (${rotulo})\n` +
+      `Não encontrei o PDF na base de conhecimento. Favor providenciar manualmente.`;
     await notifyOwner(sock, t).catch(() => {});
-    emailOwner(`[Hamsa Bot] Brochura não encontrada — ${quem}`, t);
+    emailOwner(`[Hamsa Bot] ${rotulo} não encontrada — ${quem}`, t);
     return;
   }
 
@@ -656,10 +668,10 @@ async function requestBrochuraSend(sock, jid, termo) {
     }
   }
   const t =
-    `📄 *Brochura de produto enviada*\nCliente: ${quem}\nPedido: "${termo}"\n` +
+    `📄 *${rotulo} enviada*\nCliente: ${quem}\nPedido: "${termo}"\n` +
     `Enviado(s): ${enviados.join(', ') || '(nenhum — falha no envio)'}`;
   await notifyOwner(sock, t).catch(() => {});
-  emailOwner(`[Hamsa Bot] Brochura enviada — ${quem}`, t);
+  emailOwner(`[Hamsa Bot] ${rotulo} enviada — ${quem}`, t);
 }
 
 // Envia um aviso ao dono: chat "você mesmo" do número do bot, números ADMIN e
