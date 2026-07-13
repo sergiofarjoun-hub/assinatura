@@ -38,7 +38,9 @@ dependencies {
     implementation("com.google.android.material:material:1.12.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
     // Engine de ASR offline (Whisper via ONNX Runtime), com API Kotlin.
-    implementation("com.k2fsa.sherpa.onnx:sherpa-onnx-android:1.13.2")
+    // AAR oficial dos releases do GitHub (não é publicado no Maven Central):
+    // baixado para app/libs/ pelo CI ou por scripts/fetch-sherpa.sh.
+    implementation(files("libs/sherpa-onnx.aar"))
     // Extração do modelo .tar.bz2 baixado do GitHub releases.
     implementation("org.apache.commons:commons-compress:1.26.2")
 }

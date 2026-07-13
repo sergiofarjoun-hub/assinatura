@@ -25,6 +25,9 @@ jobs:
         with:
           gradle-version: "8.7"
 
+      - name: Fetch sherpa-onnx AAR
+        run: bash HamsaDictateAndroid/scripts/fetch-sherpa.sh
+
       - name: Build debug APK
         run: gradle -p HamsaDictateAndroid assembleDebug --no-daemon
 
