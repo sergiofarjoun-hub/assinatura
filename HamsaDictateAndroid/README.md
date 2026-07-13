@@ -29,11 +29,12 @@ Versão Android do [HamsaDictate](../HamsaDictate/README.md): ditado por voz **1
 
 ```bash
 cd HamsaDictateAndroid
-./gradlew assembleDebug   # ou: gradle assembleDebug
+bash scripts/fetch-sherpa.sh   # baixa o AAR do sherpa-onnx (uma vez)
+gradle assembleDebug
 # APK em app/build/outputs/apk/debug/app-debug.apk
 ```
 
-Requer JDK 17 e Android SDK (compileSdk 34).
+Requer JDK 17 e Android SDK (compileSdk 34). O CI (`.github/workflows/android-apk.yml`) faz esse build a cada push e publica o APK na release `android-apk`.
 
 ## Roadmap
 
