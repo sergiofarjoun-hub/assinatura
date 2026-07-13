@@ -1,0 +1,48 @@
+name: Android APK (HamsaDictate)
+
+on:
+  push:
+    paths:
+      - "HamsaDictateAndroid/**"
+      - ".github/workflows/android-apk.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: "8.7"
+
+      - name: Build debug APK
+        run: gradle -p HamsaDictateAndroid assembleDebug --no-daemon
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: HamsaDictate-android-debug
+          path: HamsaDictateAndroid/app/build/outputs/apk/debug/app-debug.apk
+
+      # URL estável de download para instalar direto do celular:
+      # https://github.com/<owner>/<repo>/releases/download/android-apk/app-debug.apk
+      - name: Publish/update release with APK
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-apk
+          name: "HamsaDictate Android (APK mais recente)"
+          prerelease: true
+          body: |
+            APK de desenvolvimento do HamsaDictate para Android (assinatura debug, instalação via sideload).
+            Instruções de instalação: HamsaDictateAndroid/README.md
+          files: HamsaDictateAndroid/app/build/outputs/apk/debug/app-debug.apk
