@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.HamsaDictate" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">#1A5276</item>
+        <item name="colorSecondary">#D4AC0D</item>
+    </style>
+</resources>

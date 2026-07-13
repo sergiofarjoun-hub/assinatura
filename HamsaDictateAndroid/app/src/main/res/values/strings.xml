@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">HamsaDictate</string>
+    <string name="accessibility_service_label">HamsaDictate — inserção de texto ditado</string>
+    <string name="accessibility_service_description">Permite que o HamsaDictate insira o texto ditado no campo de texto em foco de qualquer aplicativo. O app não lê nem coleta o conteúdo da tela.</string>
+
+    <string name="onboarding_title">Configuração</string>
+    <string name="onboarding_intro">Complete os passos abaixo. Depois, ligue o bubble: segure-o para falar, solte para o texto aparecer no campo ativo.</string>
+
+    <string name="perm_mic">Microfone</string>
+    <string name="perm_overlay">Sobrepor a outros apps (bubble)</string>
+    <string name="perm_accessibility">Acessibilidade (inserir o texto)</string>
+    <string name="model_label">Modelo de voz (~150 MB, uma vez)</string>
+
+    <string name="mic_button">Permitir microfone</string>
+    <string name="overlay_button">Permitir sobreposição</string>
+    <string name="accessibility_button">Abrir ajustes de Acessibilidade</string>
+    <string name="download_button">Baixar modelo</string>
+    <string name="bubble_start">Ligar o bubble 🎙️</string>
+    <string name="bubble_stop">Desligar o bubble</string>
+
+    <string name="language_label">Idioma do ditado</string>
+    <string name="lang_pt">Português</string>
+    <string name="lang_en">English</string>
+    <string name="lang_auto">Detectar automaticamente</string>
+
+    <string name="notification_title">HamsaDictate ativo — segure o bubble para ditar</string>
+
+    <string name="model_error">Falha no modelo: %1$s</string>
+    <string name="record_error">Não foi possível gravar: %1$s</string>
+    <string name="transcribe_error">Falha na transcrição: %1$s</string>
+    <string name="accessibility_missing_toast">Texto copiado. Ative a Acessibilidade do HamsaDictate para inserir automaticamente.</string>
+    <string name="clipboard_fallback_toast">Este app bloqueou a inserção — o texto está no clipboard, cole com toque longo.</string>
+
+    <string name="privacy_note">Tudo roda no seu aparelho. Nenhum áudio ou texto sai do celular.</string>
+</resources>
