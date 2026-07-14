@@ -69,6 +69,12 @@ struct OverlayView: View {
                 Text("Transcrevendo…")
                     .font(.callout)
                     .foregroundStyle(.white)
+            case .refining:
+                Image(systemName: "sparkles")
+                    .foregroundStyle(.yellow)
+                Text("Refinando…")
+                    .font(.callout)
+                    .foregroundStyle(.white)
             default:
                 EmptyView()
             }

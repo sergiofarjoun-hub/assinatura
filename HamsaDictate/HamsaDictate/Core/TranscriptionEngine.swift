@@ -24,7 +24,8 @@ protocol TranscriptionEngine: AnyObject {
     /// Baixa (se necessário) e carrega o modelo. Idempotente.
     func prepare(onPhaseChange: @escaping @Sendable (EnginePreparationPhase) -> Void) async throws
     /// Transcreve amostras 16 kHz mono Float32. `language` nil = auto-detect.
-    func transcribe(samples: [Float], language: String?) async throws -> String
+    /// `prompt` (opcional) enviesa o decoder para grafias do vocabulário.
+    func transcribe(samples: [Float], language: String?, prompt: String?) async throws -> String
 }
 
 /// Engine baseada no WhisperKit (Argmax OSS SDK ≥ 1.0).
@@ -58,7 +59,7 @@ final class WhisperKitEngine: TranscriptionEngine {
         whisperKit = try await WhisperKit(config)
     }
 
-    func transcribe(samples: [Float], language: String?) async throws -> String {
+    func transcribe(samples: [Float], language: String?, prompt: String?) async throws -> String {
         guard let whisperKit else { throw TranscriptionError.engineNotReady }
 
         var options = DecodingOptions()
@@ -66,6 +67,17 @@ final class WhisperKitEngine: TranscriptionEngine {
         options.language = language
         options.temperature = 0
         options.skipSpecialTokens = true
+
+        // Vocabulário como prompt inicial: enviesa o decoder às grafias certas
+        // (IPMI, SUSEP, GeoBlue…). Padrão documentado do WhisperKit — tokeniza
+        // o texto e descarta tokens especiais.
+        if let prompt = prompt?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !prompt.isEmpty, let tokenizer = whisperKit.tokenizer {
+            let promptTokens = tokenizer.encode(text: " " + prompt)
+                .filter { $0 < tokenizer.specialTokens.specialTokenBegin }
+            options.promptTokens = promptTokens
+            options.usePrefillPrompt = true
+        }
 
         let results = try await whisperKit.transcribe(audioArray: samples, decodeOptions: options)
         let rawText = results.map(\.text).joined(separator: " ")
