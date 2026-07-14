@@ -30,6 +30,9 @@ android {
     }
     kotlinOptions { jvmTarget = "17" }
     buildFeatures { viewBinding = true }
+    // Compacta as .so no APK (~41 MB → ~20 MB). Custo: instalação um pouco
+    // mais lenta; ganho: APK distribuível por chat/e-mail.
+    packaging { jniLibs { useLegacyPackaging = true } }
 }
 
 dependencies {
