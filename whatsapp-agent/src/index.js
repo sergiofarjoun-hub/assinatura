@@ -30,6 +30,7 @@ const clientes = require('./clientes');
 const mailer = require('./mailer');
 const renovacoes = require('./renovacoes');
 const produtos = require('./produtos');
+const aprendizado = require('./aprendizado');
 
 const logger = pino({ level: process.env.LOG_LEVEL || 'warn' });
 
@@ -367,12 +368,16 @@ async function respond(sock, jid, text, admin, msg) {
   const docMatch = !admin ? raw.match(/\[\[SOLICITA_DOC:\s*([^\]]+)\]\]/i) : null;
   const brochuraMatch = !admin ? raw.match(/\[\[SOLICITA_BROCHURA:\s*([^\]]+)\]\]/i) : null;
   const condicoesMatch = !admin ? raw.match(/\[\[SOLICITA_CONDICOES:\s*([^\]]+)\]\]/i) : null;
+  const feedbackMatch = !admin ? raw.match(/\[\[FEEDBACK:\s*([^\]]+)\]\]/i) : null;
+  const lacunaMatch = !admin ? raw.match(/\[\[LACUNA:\s*([^\]]+)\]\]/i) : null;
   let reply = raw
     .replace(/\s*\[\[HANDOFF[^\]]*\]\]\s*/gi, '')
     .replace(/\s*\[\[CLIENTE_CONFIRMADO\]\]\s*/g, '')
     .replace(/\s*\[\[SOLICITA_DOC:[^\]]*\]\]\s*/gi, '')
     .replace(/\s*\[\[SOLICITA_BROCHURA:[^\]]*\]\]\s*/gi, '')
     .replace(/\s*\[\[SOLICITA_CONDICOES:[^\]]*\]\]\s*/gi, '')
+    .replace(/\s*\[\[FEEDBACK:[^\]]*\]\]\s*/gi, '')
+    .replace(/\s*\[\[LACUNA:[^\]]*\]\]\s*/gi, '')
     .trim();
   // Garantia extra de formalidade: nenhum emoji vai para o cliente.
   if (!admin) reply = stripEmojis(reply);
@@ -436,6 +441,28 @@ async function respond(sock, jid, text, admin, msg) {
     await requestBrochuraSend(sock, jid, condicoesMatch[1].trim(), 'apolice').catch((e) =>
       console.error('Falha no pedido de condições gerais:', e.message)
     );
+  }
+
+  // APRENDIZADO CONTÍNUO: registra feedback do cliente e lacunas de
+  // conhecimento em data/aprendizado.jsonl — insumo do src/analyze-fichas.js
+  // (relatório periódico + FAQ_APRENDIDO.md no cofre).
+  if (feedbackMatch || lacunaMatch) {
+    const prof = store.getProfile(jid);
+    if (feedbackMatch) {
+      const fb = feedbackMatch[1].trim();
+      aprendizado.log('feedback', fb, prof, numberOf(jid));
+      // Feedback NEGATIVO merece atenção na hora, não só no relatório.
+      if (/negativo/i.test(fb)) {
+        const quem = prof.nome ? `${prof.nome} (${numberOf(jid)})` : numberOf(jid);
+        const t =
+          `👎 *Feedback negativo*\nCliente: ${quem}\nTema: ${fb.replace(/negativo\s*[—-]?\s*/i, '')}\n` +
+          `O cliente sinalizou que a resposta do assistente não resolveu. ` +
+          `Vale revisar a conversa e, se for o caso, assumir o atendimento.`;
+        await notifyOwner(sock, t).catch(() => {});
+        emailOwner(`[Hamsa Bot] Feedback negativo — ${quem}`, t);
+      }
+    }
+    if (lacunaMatch) aprendizado.log('lacuna', lacunaMatch[1].trim(), prof, numberOf(jid));
   }
 
   // MEMÓRIA DE LONGO PRAZO: atualiza o _FICHA.md do cliente na pasta da rede
