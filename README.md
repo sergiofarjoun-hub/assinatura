@@ -1,5 +1,10 @@
 # PWA assets — ícones na Home para os apps Hamsa
 
+> 🤖 **Novo:** **Hamsa Agent** — agente autônomo estilo Manus, auto-hospedado,
+> em [`manus/`](manus/). App web onde você descreve uma tarefa e um agente
+> (Claude) planeja e executa com ferramentas reais (bash, arquivos, web),
+> pronto para Docker + `tailscale serve` no NAS.
+
 > 📐 **Sistema da corretora:** a visão geral dos módulos está em
 > [`ARQUITETURA.md`](ARQUITETURA.md). Cada módulo tem desenho + `schema.sql`
 > validado: [`comissoes/`](comissoes/) · [`cadastro/`](cadastro/) ·
