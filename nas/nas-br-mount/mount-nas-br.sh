@@ -9,7 +9,7 @@
 NAS_HOST="${NAS_BR_HOST:-hamsa-br}"
 
 # Shares a manter montados (nomes exatos das pastas compartilhadas no Synology).
-SHARES=("Server" "Pessoal")
+SHARES=("SERVER" "Pessoal")
 # ────────────────────────────────────────────────────────────────────────────
 
 LOG="$HOME/Library/Logs/nas-br-mount.log"

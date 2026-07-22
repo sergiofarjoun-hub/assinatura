@@ -1,7 +1,7 @@
-# Auto-mount NAS BR no Mac — `Server` e `Pessoal` sempre montados
+# Auto-mount NAS BR no Mac — `SERVER` e `Pessoal` sempre montados
 
 Mantém os dois volumes do NAS BR permanentemente disponíveis em
-`/Volumes/Server` e `/Volumes/Pessoal`. Um LaunchAgent roda um watchdog a cada
+`/Volumes/SERVER` e `/Volumes/Pessoal`. Um LaunchAgent roda um watchdog a cada
 60 segundos: se o volume não estiver montado (rede caiu, Mac acordou do sleep,
 NAS reiniciou), remonta automaticamente usando a credencial salva no Keychain
 — nenhuma senha fica em arquivo.
@@ -18,9 +18,9 @@ NAS reiniciou), remonta automaticamente usando a credencial salva no Keychain
 
 1. **Endereço do NAS BR já preenchido**: `hamsa-br` (Tailscale,
    `100.70.191.55`). Se os shares tiverem nomes diferentes de
-   `Server`/`Pessoal`, ajustar o array `SHARES` em `mount-nas-br.sh`.
+   `SERVER`/`Pessoal`, ajustar o array `SHARES` em `mount-nas-br.sh`.
 2. **Salvar a credencial no Keychain**: no Finder, `Cmd+K` →
-   `smb://hamsa-br/Server`, login com o usuário do NAS marcando **"Guardar
+   `smb://hamsa-br/SERVER`, login com o usuário do NAS marcando **"Guardar
    senha nas Chaves"**. Repetir para `Pessoal`.
 3. Rodar:
    ```bash
