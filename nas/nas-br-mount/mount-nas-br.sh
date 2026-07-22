@@ -4,9 +4,9 @@
 # Se a conexão cair (NAS reiniciou, rede caiu, Mac dormiu), remonta sozinho.
 #
 # ── CONFIGURAÇÃO ────────────────────────────────────────────────────────────
-# Endereço do NAS BR: preferir o hostname Tailscale (funciona em casa e fora).
-# Preencher com o valor real — ver `tailscale status` ou o painel do Synology.
-NAS_HOST="${NAS_BR_HOST:-nas-br}"
+# Endereço do NAS BR: hostname Tailscale (funciona em casa e fora).
+# hamsa-br = 100.70.191.55 na tailnet Hamsa Group.
+NAS_HOST="${NAS_BR_HOST:-hamsa-br}"
 
 # Shares a manter montados (nomes exatos das pastas compartilhadas no Synology).
 SHARES=("Server" "Pessoal")

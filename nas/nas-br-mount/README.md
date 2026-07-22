@@ -16,12 +16,11 @@ NAS reiniciou), remonta automaticamente usando a credencial salva no Keychain
 
 ## Instalação (no Mac, uma vez)
 
-1. **Preencher o endereço do NAS BR** em `mount-nas-br.sh` (variável
-   `NAS_HOST` — usar o hostname Tailscale do NAS BR, ex.: `hamsa-br` ou o IP
-   `100.x.x.x` da tailnet; ver `tailscale status`). Se os shares tiverem
-   nomes diferentes de `Server`/`Pessoal`, ajustar o array `SHARES`.
+1. **Endereço do NAS BR já preenchido**: `hamsa-br` (Tailscale,
+   `100.70.191.55`). Se os shares tiverem nomes diferentes de
+   `Server`/`Pessoal`, ajustar o array `SHARES` em `mount-nas-br.sh`.
 2. **Salvar a credencial no Keychain**: no Finder, `Cmd+K` →
-   `smb://<nas-br>/Server`, login com o usuário do NAS marcando **"Guardar
+   `smb://hamsa-br/Server`, login com o usuário do NAS marcando **"Guardar
    senha nas Chaves"**. Repetir para `Pessoal`.
 3. Rodar:
    ```bash
