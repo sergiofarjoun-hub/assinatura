@@ -29,8 +29,10 @@ if ! ping -c 1 -t 3 "$NAS_HOST" >/dev/null 2>&1; then
 fi
 
 for SHARE in "${SHARES[@]}"; do
-  # Já montado? (confere no mount table, não só a pasta em /Volumes)
-  if mount -t smbfs | grep -qi "on /Volumes/${SHARE} "; then
+  # Já montado? Confere pela ORIGEM (host/share), não pelo caminho em /Volumes —
+  # o Finder pode montar como "share-1" se o nome estiver ocupado (ex.: share
+  # homônimo de outro NAS), e a origem é o que identifica o mount de verdade.
+  if mount -t smbfs | grep -qi "@${NAS_HOST}/${SHARE} "; then
     continue
   fi
 
