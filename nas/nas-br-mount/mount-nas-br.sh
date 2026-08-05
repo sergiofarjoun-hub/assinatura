@@ -22,9 +22,10 @@ if [ -f "$LOG" ] && [ "$(wc -l < "$LOG")" -gt 1000 ]; then
   tail -n 500 "$LOG" > "$LOG.tmp" && mv "$LOG.tmp" "$LOG"
 fi
 
-# NAS alcançável? (evita travar o Finder tentando montar com rede fora)
-if ! ping -c 1 -t 3 "$NAS_HOST" >/dev/null 2>&1; then
-  log "NAS $NAS_HOST inalcançável — aguardando rede/Tailscale."
+# NAS alcançável? Testa a porta SMB (445) — o Synology pode bloquear ICMP,
+# então ping não é confiável como teste de vida.
+if ! nc -z -G 3 "$NAS_HOST" 445 >/dev/null 2>&1; then
+  log "NAS $NAS_HOST inalcançável (SMB 445) — aguardando rede/Tailscale."
   exit 0
 fi
 
