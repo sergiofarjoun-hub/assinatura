@@ -16,7 +16,9 @@ Plaud (nuvem) ──API oficial──▶ plaud-sync.mjs (Mac, a cada 1h) ──�
   (`2026-08-06 1432 - Reunião VUMI (a1b2c3d4).md`); o que já foi importado nunca é
   duplicado. Estado em `<vault>/Plaud/.plaud-sync-state.json` (oculto no Obsidian).
 - **Gravações ainda processando** no Plaud ficam pendentes e são re-checadas a cada
-  execução por até 7 dias.
+  execução por até 7 dias. A nota só nasce quando resumo **e** transcrição estão
+  prontos (ou quando a gravação passa de 24h — aí importa o que houver), para nunca
+  nascer pela metade.
 - **Mount do NAS fora?** O script detecta e sai em silêncio; importa tudo na próxima
   execução com o mount ativo. Escrita é atômica (tmp + rename) — nada de nota pela metade.
 

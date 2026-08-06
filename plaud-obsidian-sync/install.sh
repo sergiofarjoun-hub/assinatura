@@ -66,6 +66,20 @@ EOF
 else
   echo "   config.json já existe — mantido como está."
 fi
+# wrapper: resolve o node em tempo de execução — sobrevive a upgrades de nvm/homebrew
+cat > "$INSTALL_DIR/run.sh" <<EOF
+#!/bin/zsh -l
+NODE="$NODE_BIN"
+[ -x "\$NODE" ] || NODE="\$(command -v node)"
+if [ -z "\$NODE" ]; then
+  for c in /opt/homebrew/bin/node /usr/local/bin/node "\$HOME"/.nvm/versions/node/*/bin/node; do
+    [ -x "\$c" ] && NODE="\$c" && break
+  done
+fi
+[ -n "\$NODE" ] || { echo "plaud-sync: node não encontrado" >&2; exit 1; }
+exec "\$NODE" "$INSTALL_DIR/plaud-sync.mjs"
+EOF
+chmod +x "$INSTALL_DIR/run.sh"
 echo "   Instalado em $INSTALL_DIR"
 
 # 5. Agente launchd (roda de hora em hora + ao fazer login no Mac)
@@ -79,8 +93,7 @@ cat > "$PLIST_PATH" <<EOF
     <key>Label</key><string>$PLIST_LABEL</string>
     <key>ProgramArguments</key>
     <array>
-        <string>$NODE_BIN</string>
-        <string>$INSTALL_DIR/plaud-sync.mjs</string>
+        <string>$INSTALL_DIR/run.sh</string>
     </array>
     <key>StartInterval</key><integer>3600</integer>
     <key>RunAtLoad</key><true/>

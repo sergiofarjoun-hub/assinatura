@@ -193,16 +193,26 @@ async function saveState(statePath, state) {
   await rename(tmp, statePath);
 }
 
-/** IDs recuperados dos nomes de arquivo — rede de segurança caso o estado se perca. */
+/** IDs recuperados dos nomes de arquivo — rede de segurança caso o estado se perca.
+ *  O padrão precisa casar com shortIdOf(): alfanumérico minúsculo, não só hex. */
 async function idsFromExistingFiles(dir) {
   const ids = new Set();
   try {
     for (const f of await readdir(dir)) {
-      const m = f.match(/\(([0-9a-fA-F]{8})\)\.md$/);
-      if (m) ids.add(m[1].toLowerCase());
+      const m = f.match(/\(([0-9a-z]{8})\)\.md$/);
+      if (m) ids.add(m[1]);
     }
   } catch { /* pasta ainda não existe */ }
   return ids;
+}
+
+/** Remove .tmp-* órfãos de execuções que morreram no meio (ocultos no Obsidian, mas lixo). */
+async function cleanStaleTmp(dir) {
+  try {
+    for (const f of await readdir(dir)) {
+      if (f.startsWith('.tmp-')) await rm(join(dir, f), { force: true });
+    }
+  } catch { /* ok */ }
 }
 
 // --------------------------------------------------------------------- lock
@@ -237,6 +247,11 @@ async function buildNote(file) {
   const transcript = transcriptRaw ? renderTranscript(transcriptRaw) : '';
 
   if (!summary && !transcript) return null; // ainda processando no Plaud
+
+  // resumo e transcrição podem ficar prontos em momentos diferentes; para a nota
+  // não nascer pela metade, espera os dois — mas só nas primeiras 24h da gravação
+  const ageMs = Date.now() - (Date.parse(file.start_at ?? file.created_at ?? '') || Date.now());
+  if ((!summary || !transcript) && ageMs < 24 * 3600 * 1000) return null;
 
   const when = localStamp(file.start_at ?? file.created_at);
   const title = file.name || 'Gravação sem título';
@@ -301,6 +316,7 @@ async function main() {
   try {
     const targetDir = join(vaultDir, subdir);
     await mkdir(targetDir, { recursive: true });
+    await cleanStaleTmp(targetDir);
 
     const statePath = join(targetDir, '.plaud-sync-state.json');
     const state = await loadState(statePath);
