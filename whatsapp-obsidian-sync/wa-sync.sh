@@ -18,7 +18,7 @@ VAULT_DIR="$(py "['vaultDir']")"
 VCF="$(py ".get('contactsVcf','')")"
 
 # mounts fora do ar → sai quieto, tenta amanhã
-[ -d "$BACKUP_DIR" ] || { echo "$LOG_PREFIX Pasta de backup indisponível ($BACKUP_DIR) — Syncthing/mount fora?"; exit 0; }
+[ -d "$BACKUP_DIR" ] || { echo "$LOG_PREFIX Pasta de backup indisponível ($BACKUP_DIR) — mount fora? O backup do celular já subiu?"; exit 0; }
 [ -d "$VAULT_DIR" ] || { echo "$LOG_PREFIX Vault indisponível ($VAULT_DIR) — mount fora?"; exit 0; }
 
 # backup mais recente (o WhatsApp mantém msgstore.db.crypt15 + datados)

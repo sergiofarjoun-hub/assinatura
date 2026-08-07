@@ -9,7 +9,7 @@ tudo é feito lendo o backup que o próprio app já gera todo dia.
 
 ```
 Android: WhatsApp gera msgstore.db.crypt15 toda madrugada (automático)
-   └─ Syncthing no celular ──▶ pasta no NAS (Tailscale/LAN)
+   └─ App Synology Drive no celular (tarefa de backup) ──▶ pasta no NAS
         └─ Mac 07:15 (launchd): wa-sync.sh
              ├─ wtsexporter: descriptografa (chave de 64 dígitos) → JSON
              └─ wa2vault.py: JSON → uma nota .md por conversa no vault
@@ -33,9 +33,9 @@ Android: WhatsApp gera msgstore.db.crypt15 toda madrugada (automático)
 1. **Chave de 64 dígitos**: WhatsApp → Configurações → Conversas → Backup →
    Backup criptografado de ponta a ponta → ativar com "chave de 64 dígitos" e
    guardar a chave.
-2. **Syncthing** no Android sincronizando
-   `Android/media/com.whatsapp/WhatsApp/Databases/` com uma pasta do NAS
-   (o Synology roda Syncthing; a pasta aparece no Mac via mount `~/SERVER/...`).
+2. **App Synology Drive** no Android (Mais → Tarefas de backup) fazendo backup de
+   `Android/media/com.whatsapp/WhatsApp/Databases/` para uma pasta do Team Folder
+   SERVER (que aparece no Mac via mount `~/SERVER/...`).
 3. Python 3 no Mac (vem com o sistema/Xcode CLT).
 
 ## Instalação (no Mac)

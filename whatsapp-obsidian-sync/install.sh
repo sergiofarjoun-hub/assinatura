@@ -31,7 +31,7 @@ read -r -p "   Vault do Obsidian [$DEFAULT_VAULT]: " VAULT_DIR
 VAULT_DIR="${VAULT_DIR:-$DEFAULT_VAULT}"
 [ -d "$VAULT_DIR" ] || { echo "ERRO: pasta não existe: $VAULT_DIR"; exit 1; }
 
-read -r -p "   Pasta onde o Syncthing deposita os backups (contém msgstore*.crypt15): " BACKUP_DIR
+read -r -p "   Pasta onde o Synology Drive deposita os backups (contém msgstore*.crypt15): " BACKUP_DIR
 [ -d "$BACKUP_DIR" ] || echo "   AVISO: $BACKUP_DIR ainda não existe — o sync vai esperar ela aparecer."
 
 read -r -p "   Chave de 64 dígitos do backup criptografado (cole sem espaços): " KEY_HEX
@@ -92,7 +92,7 @@ say "5/5 Primeira execução (pode demorar alguns minutos na primeira vez)..."
 
 say "Pronto!"
 echo "  • Notas em:          $VAULT_DIR/Clientes/WhatsApp/"
-echo "  • Roda sozinho:      todo dia às 07:15 (após o Syncthing trazer o backup da madrugada)"
+echo "  • Roda sozinho:      todo dia às 07:15 (após o Drive trazer o backup da madrugada)"
 echo "  • Log:               $LOG_PATH"
 echo "  • Rodar manualmente: $CONF_DIR/wa-sync.sh"
 echo "  • Desinstalar:       launchctl bootout gui/\$(id -u)/$PLIST_LABEL && rm -rf $PLIST_PATH $CONF_DIR"
