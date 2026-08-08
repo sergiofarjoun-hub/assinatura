@@ -35,7 +35,12 @@ Multicálculo gera o comparativo em segundos.
   calculados **no JavaScript do navegador** (`getDiscountFactor`, `lookupRate`,
   `lookupChildren`).
 
-### Agente WA (`agente-wa-app`, código no Mac em `SISTEMA HAMSA/agente-wa-app/`, fora do GitHub)
+### Agente WA — **Assistente Hamsa** (`hamsa-whatsapp-agent`, NAS BR `/volume1/docker/assinatura/whatsapp-agent`; staging Mac em `SISTEMA HAMSA/whatsapp-agent-app/`)
+
+> ⚠️ CORREÇÃO 08/08/2026: a versão original deste desenho apontava a ponte pro
+> `agente-wa-app` (bot "Sofia", stack chamsa-wa) — bot ERRADO, aposentado e
+> desligado em 08/08. O bot vivo no número do concierge (5521984555656) é o
+> Assistente Hamsa (Node + Baileys + Claude), e foi NELE que a ponte entrou.
 
 - Máquina de conversa com memória + knowledge base (`kb/`).
 - Intake de cotação estruturado e escalação com resumo (`🔔 Concierge solicitado`).
@@ -73,7 +78,7 @@ cálculo **no servidor**.
    atuais da calculadora sem toggles manuais (VUMI Direct 15%, demais marcas
    10% — regra já vigente no Multicálculo). Toggle "médico" nunca automático.
 
-### Fase 2 — Ponte no agente WA (`agente-wa-app`)
+### Fase 2 — Ponte no agente WA (**Assistente Hamsa**, `whatsapp-agent`)
 
 Quando o intake estiver completo **e** sem pré-existências declaradas:
 mapear intake → parâmetros (titular = `idade`; 2º adulto = `idade_conjuge`;
@@ -106,18 +111,36 @@ v2 (opcional, depois de rodar bem): envio automático apenas para casos limpos
 
 ## Inconsistência a corrigir no bot
 
-O script do agente oferece "Best Doctors, Redbridge, AFGS, **Trawick**" — mas
-Trawick **não existe** no Multicálculo. Corrigir o texto do bot para as marcas
-reais (VUMI, EVER, RedBridge, American Fidelity, BDI) ou adicionar o carrier à
-calculadora antes.
+~~O script do agente oferece "Best Doctors, Redbridge, AFGS, **Trawick**"~~
+CORREÇÃO 08/08: Trawick **existe** no Multicálculo (10 planos, scraper diário) —
+a alegação original veio de uma cópia de abril do HTML. O catálogo real tem 7
+seguradoras: VUMI, EVER, RedBridge, AFA, BDI, Trawick e Cigna. A lista dita pelo
+bot foi corrigida no deploy de 08/08 (mantendo os nomes antigos na identificação
+de cadastro).
 
 ## Onde implementar
 
 | Peça | Onde | Esforço |
 |---|---|---|
 | `rates.json` + `POST /cotar` | repo `hamsa-multicalculo` (`docker/app/`) | 1 sessão |
-| Ponte + fluxo de aprovação | `agente-wa-app` no Mac (sessão Claude Code local) | 1–2 sessões |
+| Ponte + fluxo de aprovação | `whatsapp-agent` (staging Mac `whatsapp-agent-app/`) | ✅ feito 08/08 |
 | Deploy | NAS, protocolo padrão (backup → unlock → 1 execução → smoke test) | — |
 
 A Fase 1 pode ser desenvolvida e testada **inteiramente fora do NAS** (o
 container roda local com `docker compose up`); só o deploy final toca produção.
+
+
+---
+
+## ✅ STATUS 08/08/2026 — IMPLEMENTADO E NO AR
+
+- **Fase 1**: `POST /api/cotar` em produção no NAS BR (:9191), branch `cotar-v2`
+  do repo `hamsa-multicalculo` (substitui o PR #1, que tinha 11 bugs de preço
+  confirmados por ter partido de um HTML de abril). Motor validado por testes
+  dourados: 6.420 células = 100% idêntico ao motor JS da calculadora.
+  `rates.json` regenerado automaticamente pelos scrapers diários (drift guard).
+- **Fases 2 e 3**: ponte + aprovação humana no ar no Assistente Hamsa
+  (etiqueta `[[COTACAO]]` → PDF pro aprovador → `!aprovar`/`!rejeitar` → envio
+  ao cliente com disclaimer; pré-existência/idade fora → concierge humano;
+  `COTACAO_ENABLED` liga/desliga). Ligada em 08/08 por ordem do Sergio.
+- v2 em curso: VUMI Optimum (composição) + destinos Expat.
