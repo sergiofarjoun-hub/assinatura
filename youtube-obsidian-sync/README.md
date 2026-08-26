@@ -2,9 +2,13 @@
 
 Transforma vídeos do YouTube em notas Markdown no vault **BASE_CONHECIMENTO**: você cola
 a URL numa nota de fila, e de hora em hora o sync baixa metadados + legenda e cria a nota
-com a **transcrição em texto** em `YouTube/`. Nada de assistir de novo para achar aquele
-trecho — e o conteúdo passa a estar disponível para busca, para links do Obsidian e para
-o Claude ler.
+com a **transcrição em texto** e, opcionalmente, **frames do vídeo** em `YouTube/`. Nada de
+assistir de novo para achar aquele trecho — e o conteúdo passa a estar disponível para
+busca, para links do Obsidian e para o Claude ler.
+
+Os frames são o que permite a um agente **ver** o vídeo: um modelo não processa vídeo, mas
+lê imagens. Fatiado em imagens com marca de tempo, o conteúdo visual (tela de código,
+slide, diagrama) entra na nota junto com a fala.
 
 ## Arquitetura
 
@@ -13,6 +17,7 @@ Você cola a URL em <vault>/YouTube/_fila.md
    └─ Mac, de hora em hora (launchd): yt-sync.sh
         ├─ yt-dlp: metadados (.info.json) + legenda (.vtt/.srt), sem baixar o vídeo
         ├─ [opcional] sem legenda → baixa o áudio e chama seu transcritor local (Whisper)
+        ├─ [opcional] frames → baixa o vídeo, ffmpeg fatia em JPEG, descarta o vídeo
         └─ yt2vault.py: → <vault>/YouTube/<data> - <título> (<id>).md
              └─ marca a linha da fila como feita, apontando para a nota
 ```
@@ -27,6 +32,9 @@ Você cola a URL em <vault>/YouTube/_fila.md
   (configurável).
 - **Mount do NAS fora?** Sai em silêncio e tenta na hora seguinte. Escrita é atômica
   (tmp + rename) — nada de nota pela metade.
+- **Frames**: com `framesEvery` > 0, o vídeo é baixado, fatiado em JPEG (1 a cada N
+  segundos, altura limitada) e **apagado em seguida** — só as imagens ficam, em
+  `<vault>/YouTube/_frames/<id>/`, embutidas na nota com a marca de tempo.
 - **Lock** em `~/.yt-obsidian-sync/sync.lock` impede execuções sobrepostas (stale após 30min).
 
 ## Formato da nota
@@ -57,6 +65,14 @@ tags:
 **[0:00]** o segredo aqui é o grafo que o agente consulta
 
 **[0:38]** e isso corta o custo de token
+
+## Frames
+
+**[0:00]**
+![[_frames/fBz-MU4fdJw/fBz-MU4fdJw-00000.jpg]]
+
+**[0:15]**
+![[_frames/fBz-MU4fdJw/fBz-MU4fdJw-00015.jpg]]
 ```
 
 ## Instalação (no Mac)
@@ -90,6 +106,9 @@ instala em `~/.yt-obsidian-sync/` → cria a nota de fila → registra o agente 
 | `subLangs` / `ytdlpSubLangs` | idiomas preferidos, em ordem |
 | `cookiesFromBrowser` | `safari`/`chrome`/`firefox` — só para vídeo privado ou com restrição de idade |
 | `whisperCmd` | transcritor local para vídeo sem legenda (ver contrato abaixo) |
+| `framesEvery` | 1 frame a cada N segundos; `0` desliga (padrão). Precisa de `ffmpeg` |
+| `framesMax` | teto de frames por vídeo (padrão 60) — evita nota gigante em vídeo longo |
+| `framesMaxHeight` | altura máxima do frame e do download (padrão 720) |
 | `extraTags` | tags extras no frontmatter de toda nota |
 
 ### Vídeo sem legenda
@@ -104,11 +123,21 @@ O comando deve deixar um `.srt` ou `.vtt` na pasta de trabalho — o resto do pi
 igual. Serve para `whisper.cpp`, `faster-whisper` ou qualquer wrapper seu. Sem `whisperCmd`,
 a nota nasce só com metadados e descrição, marcada como `legenda: "nenhuma"`.
 
+### Frames — quando ligar
+
+Para vídeo **falado** (entrevista, aula), a transcrição basta: deixe `framesEvery: 0`.
+Ligue para conteúdo em que a **tela é o conteúdo** — screencast, demo de ferramenta,
+slide, diagrama. Um Short de 60s com `framesEvery: 10` rende 6 imagens; uma aula de 1h
+com `framesEvery: 30` bate no teto de `framesMax` (60 imagens).
+
+O vídeo é apagado assim que os frames saem — o que fica no vault são só as imagens.
+
 ## Notas técnicas
 
-- Download: [yt-dlp](https://github.com/yt-dlp/yt-dlp) com `--skip-download` — só o
-  `.info.json` e a legenda saem da rede; o vídeo nunca é baixado (exceto o áudio, quando
-  o fallback de transcrição está ligado).
+- Download: [yt-dlp](https://github.com/yt-dlp/yt-dlp) com `--skip-download` — por padrão só
+  o `.info.json` e a legenda saem da rede. O áudio só é baixado com `whisperCmd` ligado, e
+  o vídeo só com `framesEvery` > 0; nos dois casos o arquivo é apagado depois.
+- Frames: `ffmpeg -vf "fps=1/N,scale=-2:min(H,ih)" -q:v 4`, limitado por `framesMax`.
 - Aceita todas as formas de URL: `youtube.com/watch?v=`, `youtu.be/`, `/shorts/`,
   `/embed/`, `/live/` — ou o ID de 11 caracteres cru.
 - A fila é uma nota comum do Obsidian: dá para colar URL do celular pelo app e o Mac

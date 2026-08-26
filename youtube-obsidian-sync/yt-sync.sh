@@ -20,6 +20,9 @@ SUB_LANGS="$(py ".get('ytdlpSubLangs','pt.*,en.*')")"
 YTDLP="$(py ".get('ytdlpBin','yt-dlp')")"
 COOKIES_BROWSER="$(py ".get('cookiesFromBrowser','')")"
 WHISPER_CMD="$(py ".get('whisperCmd','')")"
+FRAMES_EVERY="$(py ".get('framesEvery',0)")"
+FRAMES_MAX="$(py ".get('framesMax',60)")"
+FRAMES_HEIGHT="$(py ".get('framesMaxHeight',720)")"
 
 # vault indisponível (mount do NAS fora) → sai quieto, tenta na próxima execução
 [ -d "$VAULT_DIR" ] || { echo "$LOG_PREFIX Vault indisponível ($VAULT_DIR) — mount fora?"; exit 0; }
@@ -90,6 +93,34 @@ for URL in "${URLS[@]}"; do
       AUDIO="$(ls "$WORK"/*.mp3 2>/dev/null | head -1 || true)"
       [ -n "$AUDIO" ] && { $WHISPER_CMD "$AUDIO" "$WORK" >>"$WORK/whisper.log" 2>&1 \
         || echo "$LOG_PREFIX AVISO: whisperCmd falhou — veja $WORK/whisper.log"; }
+    fi
+  fi
+
+  # Frames: baixa o vídeo, fatia com ffmpeg e joga fora o vídeo.
+  # É o que permite a um agente *ver* o conteúdo — ele lê as imagens uma a uma.
+  if [ "$FRAMES_EVERY" -gt 0 ] 2>/dev/null; then
+    if ! command -v ffmpeg >/dev/null; then
+      echo "$LOG_PREFIX AVISO: framesEvery ligado mas ffmpeg não está instalado (brew install ffmpeg) — pulando frames."
+    else
+      echo "$LOG_PREFIX Extraindo 1 frame a cada ${FRAMES_EVERY}s..."
+      VOPTS=(-f "bv*[height<=$FRAMES_HEIGHT]+ba/b[height<=$FRAMES_HEIGHT]/b"
+             --no-playlist --no-progress -o "$WORK/video.%(ext)s")
+      [ -n "$COOKIES_BROWSER" ] && VOPTS+=(--cookies-from-browser "$COOKIES_BROWSER")
+      if "$YTDLP" "${VOPTS[@]}" "$URL" >>"$WORK/yt-dlp.log" 2>&1; then
+        VIDEO="$(ls "$WORK"/video.* 2>/dev/null | head -1 || true)"
+        if [ -n "$VIDEO" ]; then
+          mkdir -p "$WORK/frames"
+          ffmpeg -nostdin -loglevel error -i "$VIDEO" \
+            -vf "fps=1/$FRAMES_EVERY,scale=-2:'min($FRAMES_HEIGHT,ih)'" \
+            -frames:v "$FRAMES_MAX" -q:v 4 "$WORK/frames/frame-%04d.jpg" \
+            >>"$WORK/ffmpeg.log" 2>&1 \
+            || echo "$LOG_PREFIX AVISO: ffmpeg falhou — veja $WORK/ffmpeg.log"
+          rm -f "$VIDEO"   # o vídeo em si nunca fica no disco
+          echo "$LOG_PREFIX $(ls "$WORK/frames" 2>/dev/null | wc -l | tr -d ' ') frames extraídos."
+        fi
+      else
+        echo "$LOG_PREFIX AVISO: não consegui baixar o vídeo para extrair frames — veja $WORK/yt-dlp.log"
+      fi
     fi
   fi
 

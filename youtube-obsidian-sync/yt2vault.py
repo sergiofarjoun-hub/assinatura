@@ -17,6 +17,7 @@ Estado: <vault>/<subdir>/.yt-sync-state.json
 
 import glob
 import json
+import shutil
 import os
 import re
 import sys
@@ -167,6 +168,34 @@ def group_transcript(cues: list[tuple[str, str]], every_seconds: int = 30) -> st
     return "\n\n".join(blocks)
 
 
+# --------------------------------------------------------------------- frames
+
+def install_frames(cfg: dict, workdir: str, vid: str) -> str:
+    """
+    Move os frames extraídos pelo ffmpeg para <vault>/<subdir>/_frames/<id>/ e
+    devolve a seção "Frames" da nota: cada imagem embutida com sua marca de tempo.
+
+    É isso que permite a um agente *ver* o vídeo — ele lê as imagens uma a uma.
+    """
+    frames = sorted(glob.glob(os.path.join(workdir, "frames", "*.jpg")))
+    if not frames:
+        return ""
+
+    every = int(cfg.get("framesEvery") or 0) or 1
+    dest = os.path.join(cfg["vaultDir"], cfg.get("subdir", "YouTube"), "_frames", vid)
+    os.makedirs(dest, exist_ok=True)
+
+    lines: list[str] = []
+    for i, src in enumerate(frames):
+        ts = i * every
+        name = f"{vid}-{ts:05d}.jpg"
+        shutil.copy2(src, os.path.join(dest, name))
+        lines.append(f"**[{hhmmss(ts)}]**")
+        lines.append(f"![[_frames/{vid}/{name}]]")
+        lines.append("")
+    return "\n".join(lines).rstrip()
+
+
 # ------------------------------------------------------------------- estado
 
 def state_path(cfg: dict) -> str:
@@ -212,7 +241,8 @@ def mark_queue_done(cfg: dict, url: str, note_name: str) -> None:
 
 # ------------------------------------------------------------------ ingestão
 
-def build_note(info: dict, transcript: str, sub_lang: str | None, cfg: dict) -> tuple[str, str]:
+def build_note(info: dict, transcript: str, sub_lang: str | None, cfg: dict,
+               frames_section: str = "") -> tuple[str, str]:
     vid = info.get("id") or "?"
     title = info.get("title") or vid
     channel = info.get("channel") or info.get("uploader") or ""
@@ -225,6 +255,7 @@ def build_note(info: dict, transcript: str, sub_lang: str | None, cfg: dict) -> 
 
     note_name = f"{upload or datetime.now().strftime('%Y-%m-%d')} - {sanitize_filename(title)} ({vid})"
 
+    n_frames = frames_section.count("![[")
     tags = ["youtube"] + [t for t in cfg.get("extraTags", []) if t]
     front = [
         "---",
@@ -235,6 +266,7 @@ def build_note(info: dict, transcript: str, sub_lang: str | None, cfg: dict) -> 
         f"publicado: {yaml_str(upload)}",
         f"duracao: {yaml_str(duration)}",
         f"legenda: {yaml_str(sub_lang or 'nenhuma')}",
+        f"frames: {n_frames}",
         f"importado: {yaml_str(datetime.now(timezone.utc).astimezone().strftime('%Y-%m-%d %H:%M'))}",
         "tags:",
     ]
@@ -247,6 +279,8 @@ def build_note(info: dict, transcript: str, sub_lang: str | None, cfg: dict) -> 
     body += ["", "## Transcrição", ""]
     body.append(transcript if transcript else
                 "_Sem legenda disponível. Para transcrever, configure `whisperCmd` no config._")
+    if frames_section:
+        body += ["", "## Frames", "", frames_section]
     return note_name, "\n".join(front) + "\n\n" + "\n".join(body) + "\n"
 
 
@@ -262,22 +296,26 @@ def ingest(cfg: dict, workdir: str, url: str) -> int:
     sub_file, sub_lang = pick_subtitle(workdir, prefer)
     transcript = group_transcript(parse_subtitles(sub_file)) if sub_file else ""
 
-    note_name, content = build_note(info, transcript, sub_lang, cfg)
+    vid = info.get("id") or video_id(url) or "video"
+    frames_section = install_frames(cfg, workdir, vid)
+    note_name, content = build_note(info, transcript, sub_lang, cfg, frames_section)
     folder = os.path.join(cfg["vaultDir"], cfg.get("subdir", "YouTube"))
     os.makedirs(folder, exist_ok=True)
     atomic_write(os.path.join(folder, f"{note_name}.md"), content)
 
     state = load_state(cfg)
-    state.setdefault("videos", {})[info.get("id") or video_id(url) or url] = {
+    state.setdefault("videos", {})[vid] = {
         "note": note_name,
         "url": url,
         "importado": datetime.now().strftime("%Y-%m-%d %H:%M"),
         "legenda": sub_lang or "nenhuma",
+        "frames": frames_section.count("![["),
     }
     save_state(cfg, state)
     mark_queue_done(cfg, url, note_name)
 
-    print(f"nota: {note_name}.md (legenda: {sub_lang or 'nenhuma'})")
+    print(f"nota: {note_name}.md (legenda: {sub_lang or 'nenhuma'}, "
+          f"frames: {frames_section.count('![[')})")
     return 0
 
 

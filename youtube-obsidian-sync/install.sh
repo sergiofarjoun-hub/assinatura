@@ -45,6 +45,15 @@ echo "   Sem legenda, dá para transcrever localmente (whisper.cpp, faster-whisp
 echo "   O comando recebe: <arquivo.mp3> <pasta-de-trabalho> e deve deixar um .srt/.vtt na pasta."
 read -r -p "   Comando de transcrição (Enter para pular): " WHISPER
 
+echo "   Frames: fatia o vídeo em imagens para o conteúdo visual entrar na nota"
+echo "   (é o que permite um agente 'assistir' ao vídeo). 0 = desligado."
+read -r -p "   Extrair 1 frame a cada quantos segundos? [0]: " FRAMES_EVERY
+FRAMES_EVERY="${FRAMES_EVERY:-0}"
+if [ "$FRAMES_EVERY" -gt 0 ] 2>/dev/null && ! command -v ffmpeg >/dev/null; then
+  echo "   ffmpeg não encontrado — instalando..."
+  command -v brew >/dev/null && brew install ffmpeg || echo "   AVISO: instale o ffmpeg (brew install ffmpeg) ou os frames serão pulados."
+fi
+
 say "3/5 Instalando..."
 mkdir -p "$CONF_DIR"
 cp "$SRC_DIR/yt2vault.py" "$SRC_DIR/yt-sync.sh" "$CONF_DIR/"
@@ -62,6 +71,9 @@ cfg = {
   "ytdlpBin": "$YTDLP_BIN",
   "cookiesFromBrowser": "$COOKIES",
   "whisperCmd": "$WHISPER",
+  "framesEvery": int("$FRAMES_EVERY" or 0),
+  "framesMax": 60,
+  "framesMaxHeight": 720,
   "extraTags": [],
 }
 json.dump(cfg, open(sys.argv[1], "w"), ensure_ascii=False, indent=2)
