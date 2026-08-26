@@ -47,7 +47,9 @@ read -r -p "   Comando de transcrição (Enter para pular): " WHISPER
 
 echo "   Frames: fatia o vídeo em imagens para o conteúdo visual entrar na nota"
 echo "   (é o que permite um agente 'assistir' ao vídeo). 0 = desligado."
-read -r -p "   Extrair 1 frame a cada quantos segundos? [0]: " FRAMES_EVERY
+echo "   O corte é por mudança de cena; o intervalo abaixo é o fallback para"
+echo "   vídeo de plano único (talking head) e o modo 'interval' do config."
+read -r -p "   Ligar frames? Intervalo de fallback em segundos, 0 = desligado [0]: " FRAMES_EVERY
 FRAMES_EVERY="${FRAMES_EVERY:-0}"
 if [ "$FRAMES_EVERY" -gt 0 ] 2>/dev/null && ! command -v ffmpeg >/dev/null; then
   echo "   ffmpeg não encontrado — instalando..."
@@ -72,6 +74,9 @@ cfg = {
   "cookiesFromBrowser": "$COOKIES",
   "whisperCmd": "$WHISPER",
   "framesEvery": int("$FRAMES_EVERY" or 0),
+  "framesMode": "scene",
+  "sceneThreshold": 0.3,
+  "sceneMinFrames": 3,
   "framesMax": 60,
   "framesMaxHeight": 720,
   "extraTags": [],

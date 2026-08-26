@@ -23,6 +23,9 @@ WHISPER_CMD="$(py ".get('whisperCmd','')")"
 FRAMES_EVERY="$(py ".get('framesEvery',0)")"
 FRAMES_MAX="$(py ".get('framesMax',60)")"
 FRAMES_HEIGHT="$(py ".get('framesMaxHeight',720)")"
+FRAMES_MODE="$(py ".get('framesMode','scene')")"
+SCENE_THRESHOLD="$(py ".get('sceneThreshold',0.3)")"
+SCENE_MIN="$(py ".get('sceneMinFrames',3)")"
 
 # vault indisponível (mount do NAS fora) → sai quieto, tenta na próxima execução
 [ -d "$VAULT_DIR" ] || { echo "$LOG_PREFIX Vault indisponível ($VAULT_DIR) — mount fora?"; exit 0; }
@@ -102,19 +105,55 @@ for URL in "${URLS[@]}"; do
     if ! command -v ffmpeg >/dev/null; then
       echo "$LOG_PREFIX AVISO: framesEvery ligado mas ffmpeg não está instalado (brew install ffmpeg) — pulando frames."
     else
-      echo "$LOG_PREFIX Extraindo 1 frame a cada ${FRAMES_EVERY}s..."
+      if [ "$FRAMES_MODE" = "scene" ]; then
+        echo "$LOG_PREFIX Extraindo frames por mudança de cena (limiar $SCENE_THRESHOLD)..."
+      else
+        echo "$LOG_PREFIX Extraindo 1 frame a cada ${FRAMES_EVERY}s..."
+      fi
       VOPTS=(-f "bv*[height<=$FRAMES_HEIGHT]+ba/b[height<=$FRAMES_HEIGHT]/b"
              --no-playlist --no-progress -o "$WORK/video.%(ext)s")
       [ -n "$COOKIES_BROWSER" ] && VOPTS+=(--cookies-from-browser "$COOKIES_BROWSER")
       if "$YTDLP" "${VOPTS[@]}" "$URL" >>"$WORK/yt-dlp.log" 2>&1; then
         VIDEO="$(ls "$WORK"/video.* 2>/dev/null | head -1 || true)"
         if [ -n "$VIDEO" ]; then
-          mkdir -p "$WORK/frames"
-          ffmpeg -nostdin -loglevel error -i "$VIDEO" \
-            -vf "fps=1/$FRAMES_EVERY,scale=-2:'min($FRAMES_HEIGHT,ih)'" \
-            -frames:v "$FRAMES_MAX" -q:v 4 "$WORK/frames/frame-%04d.jpg" \
-            >>"$WORK/ffmpeg.log" 2>&1 \
-            || echo "$LOG_PREFIX AVISO: ffmpeg falhou — veja $WORK/ffmpeg.log"
+          SCALE="scale=-2:'min($FRAMES_HEIGHT,ih)'"
+
+          # Corte por intervalo fixo: 1 frame a cada N segundos.
+          extract_interval() {
+            rm -rf "$WORK/frames"; mkdir -p "$WORK/frames"
+            ffmpeg -nostdin -loglevel error -i "$VIDEO" \
+              -vf "fps=1/$FRAMES_EVERY,$SCALE" \
+              -frames:v "$FRAMES_MAX" -q:v 4 "$WORK/frames/frame-%04d.jpg" \
+              >>"$WORK/ffmpeg.log" 2>&1
+          }
+
+          # Corte por mudança de cena: pega o primeiro frame e cada troca de
+          # cena acima do limiar. Em screencast isso evita três frames do mesmo
+          # slide parado e não perde o instante em que a tela muda.
+          # O showinfo imprime pts_time de cada frame emitido, na ordem — daí
+          # sai o times.txt que dá a marca de tempo real de cada imagem.
+          extract_scene() {
+            rm -rf "$WORK/frames"; mkdir -p "$WORK/frames"
+            ffmpeg -nostdin -loglevel info -i "$VIDEO" \
+              -vf "select='eq(n\,0)+gt(scene\,$SCENE_THRESHOLD)',$SCALE,showinfo" \
+              -vsync vfr -frames:v "$FRAMES_MAX" -q:v 4 "$WORK/frames/frame-%04d.jpg" \
+              >"$WORK/ffmpeg-scene.log" 2>&1
+            grep -o 'pts_time:[0-9.]*' "$WORK/ffmpeg-scene.log" \
+              | cut -d: -f2 > "$WORK/frames/times.txt" || true
+          }
+
+          if [ "$FRAMES_MODE" = "scene" ]; then
+            extract_scene || echo "$LOG_PREFIX AVISO: ffmpeg falhou — veja $WORK/ffmpeg-scene.log"
+            N_SCENE="$(ls "$WORK/frames"/*.jpg 2>/dev/null | wc -l | tr -d ' ')"
+            # Vídeo de plano único (talking head) rende quase nenhuma cena —
+            # nesse caso o intervalo fixo cobre melhor.
+            if [ "${N_SCENE:-0}" -lt "$SCENE_MIN" ]; then
+              echo "$LOG_PREFIX Só $N_SCENE cena(s) detectada(s) — caindo para intervalo fixo."
+              extract_interval || echo "$LOG_PREFIX AVISO: ffmpeg falhou — veja $WORK/ffmpeg.log"
+            fi
+          else
+            extract_interval || echo "$LOG_PREFIX AVISO: ffmpeg falhou — veja $WORK/ffmpeg.log"
+          fi
           rm -f "$VIDEO"   # o vídeo em si nunca fica no disco
           echo "$LOG_PREFIX $(ls "$WORK/frames" 2>/dev/null | wc -l | tr -d ' ') frames extraídos."
         fi

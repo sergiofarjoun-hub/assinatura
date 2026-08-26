@@ -185,14 +185,37 @@ def install_frames(cfg: dict, workdir: str, vid: str) -> str:
     dest = os.path.join(cfg["vaultDir"], cfg.get("subdir", "YouTube"), "_frames", vid)
     os.makedirs(dest, exist_ok=True)
 
+    # No modo cena os frames não são equidistantes: o ffmpeg (showinfo) deixou
+    # o tempo real de cada um em times.txt. Sem ele, cai no intervalo fixo.
+    times: list[int] = []
+    times_file = os.path.join(workdir, "frames", "times.txt")
+    if os.path.isfile(times_file):
+        with open(times_file, "r", encoding="utf-8") as fh:
+            for line in fh:
+                try:
+                    times.append(int(float(line.strip())))
+                except ValueError:
+                    continue
+
+    # Uma mesma transição costuma disparar dois frames seguidos; guardar os dois
+    # só polui a nota. Mantém o primeiro de cada janela de `min_gap` segundos.
+    min_gap = int(cfg.get("frameMinGap", 1))
+
     lines: list[str] = []
+    kept = 0
+    last_ts: int | None = None
     for i, src in enumerate(frames):
-        ts = i * every
-        name = f"{vid}-{ts:05d}.jpg"
+        ts = times[i] if i < len(times) else i * every
+        if last_ts is not None and ts - last_ts < min_gap:
+            continue
+        last_ts = ts
+        # O índice no nome garante unicidade mesmo com dois frames no mesmo segundo.
+        name = f"{vid}-{kept:03d}-{ts:05d}.jpg"
         shutil.copy2(src, os.path.join(dest, name))
         lines.append(f"**[{hhmmss(ts)}]**")
         lines.append(f"![[_frames/{vid}/{name}]]")
         lines.append("")
+        kept += 1
     return "\n".join(lines).rstrip()
 
 

@@ -17,7 +17,8 @@ Você cola a URL em <vault>/YouTube/_fila.md
    └─ Mac, de hora em hora (launchd): yt-sync.sh
         ├─ yt-dlp: metadados (.info.json) + legenda (.vtt/.srt), sem baixar o vídeo
         ├─ [opcional] sem legenda → baixa o áudio e chama seu transcritor local (Whisper)
-        ├─ [opcional] frames → baixa o vídeo, ffmpeg fatia em JPEG, descarta o vídeo
+        ├─ [opcional] frames → baixa o vídeo, ffmpeg corta nas mudanças de cena,
+        │                       descarta o vídeo
         └─ yt2vault.py: → <vault>/YouTube/<data> - <título> (<id>).md
              └─ marca a linha da fila como feita, apontando para a nota
 ```
@@ -32,9 +33,12 @@ Você cola a URL em <vault>/YouTube/_fila.md
   (configurável).
 - **Mount do NAS fora?** Sai em silêncio e tenta na hora seguinte. Escrita é atômica
   (tmp + rename) — nada de nota pela metade.
-- **Frames**: com `framesEvery` > 0, o vídeo é baixado, fatiado em JPEG (1 a cada N
-  segundos, altura limitada) e **apagado em seguida** — só as imagens ficam, em
-  `<vault>/YouTube/_frames/<id>/`, embutidas na nota com a marca de tempo.
+- **Frames por mudança de cena**: com `framesEvery` > 0, o vídeo é baixado, cortado nas
+  **trocas de cena** (primeiro frame + cada mudança acima do limiar) e **apagado em
+  seguida** — só as imagens ficam, em `<vault>/YouTube/_frames/<id>/`, embutidas na nota
+  com a marca de tempo real. Num screencast isso captura cada slide uma vez, em vez de
+  três frames do mesmo slide parado. Vídeo de plano único (talking head) rende quase
+  nenhuma cena: abaixo de `sceneMinFrames`, cai automaticamente para intervalo fixo.
 - **Lock** em `~/.yt-obsidian-sync/sync.lock` impede execuções sobrepostas (stale após 30min).
 
 ## Formato da nota
@@ -106,7 +110,11 @@ instala em `~/.yt-obsidian-sync/` → cria a nota de fila → registra o agente 
 | `subLangs` / `ytdlpSubLangs` | idiomas preferidos, em ordem |
 | `cookiesFromBrowser` | `safari`/`chrome`/`firefox` — só para vídeo privado ou com restrição de idade |
 | `whisperCmd` | transcritor local para vídeo sem legenda (ver contrato abaixo) |
-| `framesEvery` | 1 frame a cada N segundos; `0` desliga (padrão). Precisa de `ffmpeg` |
+| `framesEvery` | liga os frames (`0` desliga, padrão) e define o intervalo do fallback. Precisa de `ffmpeg` |
+| `framesMode` | `scene` (padrão) ou `interval` |
+| `sceneThreshold` | sensibilidade da detecção de cena (0.3 padrão; menor = mais frames) |
+| `sceneMinFrames` | abaixo disso, cai para intervalo fixo (3 padrão) |
+| `frameMinGap` | descarta frame a menos de N segundos do anterior (1 padrão) |
 | `framesMax` | teto de frames por vídeo (padrão 60) — evita nota gigante em vídeo longo |
 | `framesMaxHeight` | altura máxima do frame e do download (padrão 720) |
 | `extraTags` | tags extras no frontmatter de toda nota |
@@ -127,8 +135,15 @@ a nota nasce só com metadados e descrição, marcada como `legenda: "nenhuma"`.
 
 Para vídeo **falado** (entrevista, aula), a transcrição basta: deixe `framesEvery: 0`.
 Ligue para conteúdo em que a **tela é o conteúdo** — screencast, demo de ferramenta,
-slide, diagrama. Um Short de 60s com `framesEvery: 10` rende 6 imagens; uma aula de 1h
-com `framesEvery: 30` bate no teto de `framesMax` (60 imagens).
+slide, diagrama.
+
+No modo `scene` (padrão) a quantidade de frames acompanha o conteúdo, não a duração: um
+vídeo de 40s com 4 slides rende 4 imagens; uma aula de 1h com 30 trocas de tela rende 30.
+`framesMax` (60) é o teto. Uma mesma transição às vezes dispara dois frames seguidos —
+`frameMinGap` colapsa isso.
+
+Se a detecção estiver pegando de menos, baixe `sceneThreshold` (0.2, 0.15); se estiver
+pegando ruído de câmera tremida, suba (0.4, 0.5).
 
 O vídeo é apagado assim que os frames saem — o que fica no vault são só as imagens.
 
@@ -137,7 +152,11 @@ O vídeo é apagado assim que os frames saem — o que fica no vault são só as
 - Download: [yt-dlp](https://github.com/yt-dlp/yt-dlp) com `--skip-download` — por padrão só
   o `.info.json` e a legenda saem da rede. O áudio só é baixado com `whisperCmd` ligado, e
   o vídeo só com `framesEvery` > 0; nos dois casos o arquivo é apagado depois.
-- Frames: `ffmpeg -vf "fps=1/N,scale=-2:min(H,ih)" -q:v 4`, limitado por `framesMax`.
+- Frames (modo `scene`): `ffmpeg -vf "select='eq(n,0)+gt(scene,T)',scale,showinfo" -vsync vfr`,
+  com as marcas de tempo lidas do `pts_time` que o `showinfo` emite. Abordagem tomada de
+  [bradautomates/claude-video](https://github.com/bradautomates/claude-video) (MIT), que
+  resolve o mesmo problema numa skill sob demanda.
+- Frames (modo `interval`): `ffmpeg -vf "fps=1/N,scale"`. Nos dois, `framesMax` é o teto.
 - Aceita todas as formas de URL: `youtube.com/watch?v=`, `youtu.be/`, `/shorts/`,
   `/embed/`, `/live/` — ou o ID de 11 caracteres cru.
 - A fila é uma nota comum do Obsidian: dá para colar URL do celular pelo app e o Mac
