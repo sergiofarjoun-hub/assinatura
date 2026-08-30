@@ -1,0 +1,47 @@
+# XcodeGen spec — gere o projeto com:  xcodegen generate
+name: HamsaDictate
+options:
+  bundleIdPrefix: com.hamsa
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+
+packages:
+  ArgmaxOSS:
+    url: https://github.com/argmaxinc/argmax-oss-swift
+    from: 1.0.0
+  HotKey:
+    url: https://github.com/soffes/HotKey
+    from: 0.2.1
+
+targets:
+  HamsaDictate:
+    type: application
+    platform: macOS
+    sources:
+      - HamsaDictate
+    dependencies:
+      - package: ArgmaxOSS
+        product: WhisperKit
+      - package: HotKey
+    info:
+      path: HamsaDictate/Info.plist
+      properties:
+        CFBundleDisplayName: HamsaDictate
+        CFBundleShortVersionString: "0.1.0"
+        CFBundleVersion: "1"
+        LSUIElement: true            # sem ícone no Dock
+        LSApplicationCategoryType: public.app-category.productivity
+        NSMicrophoneUsageDescription: >-
+          O HamsaDictate usa o microfone para gravar seu ditado e
+          transcrevê-lo 100% localmente no seu Mac.
+    settings:
+      base:
+        ARCHS: arm64
+        MACOSX_DEPLOYMENT_TARGET: "14.0"
+        SWIFT_VERSION: "5.10"
+        GENERATE_INFOPLIST_FILE: false
+        # Sem entitlements de sandbox (necessário para CGEvent/Acessibilidade).
+        ENABLE_HARDENED_RUNTIME: false
+        CODE_SIGN_IDENTITY: "-"     # assinatura ad-hoc para uso pessoal
+        DEAD_CODE_STRIPPING: true
