@@ -15,7 +15,7 @@ slide, diagrama) entra na nota junto com a fala.
 ```
 Você cola a URL em <vault>/YouTube/_fila.md
    └─ Mac, de hora em hora (launchd): yt-sync.sh
-        ├─ yt-dlp: metadados (.info.json) + legenda (.vtt/.srt), sem baixar o vídeo
+        ├─ yt-dlp: metadados (.info.json) e depois UMA legenda (.vtt/.srt), sem baixar o vídeo
         ├─ [opcional] sem legenda → baixa o áudio e chama seu transcritor local (Whisper)
         ├─ [opcional] frames → baixa o vídeo, ffmpeg corta nas mudanças de cena,
         │                       descarta o vídeo
@@ -29,10 +29,20 @@ Você cola a URL em <vault>/YouTube/_fila.md
 - **Legenda limpa**: as legendas automáticas do YouTube são "rolantes" (cada trecho repete
   o final do anterior). O parser desfaz isso, remove as marcações inline e `[Música]`, e
   agrupa em parágrafos com marca de tempo a cada ~30s.
-- **Preferência de idioma**: legenda manual antes da automática, `pt` antes de `en`
-  (configurável).
+- **Uma legenda só, a melhor**: manual no idioma preferido → manual no idioma original →
+  automática do **idioma original** → tradução automática no idioma preferido → o que houver.
+  A tradução automática fica por último de propósito: ela é gerada em cima da legenda
+  automática, e erra mais em nome próprio e termo técnico. Pedir várias línguas de uma vez
+  (`pt`, `pt-PT`, `en`, `en-orig`) fazia o YouTube responder **HTTP 429**; agora vem uma só,
+  com uma pausa de 6 s antes do download (`--sleep-subtitles`).
 - **Mount do NAS fora?** Sai em silêncio e tenta na hora seguinte. Escrita é atômica
   (tmp + rename) — nada de nota pela metade.
+- **Fallback espalhado pelo vídeo todo**: quando cai no intervalo fixo, o intervalo cresce o
+  quanto for preciso para os `framesMax` frames se espalharem por toda a duração —
+  `framesEvery` é o **mínimo**, não o valor final. Antes, 60 frames a cada 10 s paravam nos
+  primeiros 10 min de um vídeo de 21. Amostrar por intervalo nunca alcança o fim exato: a
+  última imagem fica a menos de um intervalo do final (num vídeo de 20 min com 60 frames,
+  os últimos 20 s).
 - **Frames por mudança de cena**: com `framesEvery` > 0, o vídeo é baixado, cortado nas
   **trocas de cena** (primeiro frame + cada mudança acima do limiar) e **apagado em
   seguida** — só as imagens ficam, em `<vault>/YouTube/_frames/<id>/`, embutidas na nota
@@ -107,10 +117,10 @@ instala em `~/.yt-obsidian-sync/` → cria a nota de fila → registra o agente 
 |---|---|
 | `vaultDir` / `subdir` | onde as notas nascem (padrão `YouTube/`) |
 | `queueFile` | nota de fila, relativa ao vault (padrão `YouTube/_fila.md`) |
-| `subLangs` / `ytdlpSubLangs` | idiomas preferidos, em ordem |
+| `subLangs` | idiomas preferidos, em ordem — valem para a legenda **manual** e para a tradução automática; a automática vem sempre no idioma original do vídeo (`ytdlpSubLangs`, das configs antigas, ainda é lido) |
 | `cookiesFromBrowser` | `safari`/`chrome`/`firefox` — só para vídeo privado ou com restrição de idade |
 | `whisperCmd` | transcritor local para vídeo sem legenda (ver contrato abaixo) |
-| `framesEvery` | liga os frames (`0` desliga, padrão) e define o intervalo do fallback. Precisa de `ffmpeg` |
+| `framesEvery` | liga os frames (`0` desliga, padrão) e define o intervalo **mínimo** do fallback — em vídeo longo ele cresce para `framesMax` frames se espalharem por toda a duração. Precisa de `ffmpeg` |
 | `framesMode` | `scene` (padrão) ou `interval` |
 | `sceneThreshold` | sensibilidade da detecção de cena (0.3 padrão; menor = mais frames) |
 | `sceneMinFrames` | abaixo disso, cai para intervalo fixo (3 padrão) |
@@ -150,10 +160,15 @@ O vídeo é apagado assim que os frames saem — o que fica no vault são só as
 ## Notas técnicas
 
 - Download: [yt-dlp](https://github.com/yt-dlp/yt-dlp) com `--skip-download` — por padrão só
-  o `.info.json` e a legenda saem da rede. O áudio só é baixado com `whisperCmd` ligado, e
+  o `.info.json` e a legenda saem da rede. São duas chamadas: a primeira traz os metadados, a
+  segunda pede a legenda escolhida a partir deles (com `--load-info-json`, sem bater de novo
+  na página do vídeo). O áudio só é baixado com `whisperCmd` ligado, e
   o vídeo só com `framesEvery` > 0; nos dois casos o arquivo é apagado depois.
-- Frames (modo `scene`): `ffmpeg -vf "select='eq(n,0)+gt(scene,T)',scale,showinfo" -vsync vfr`,
-  com as marcas de tempo lidas do `pts_time` que o `showinfo` emite. Abordagem tomada de
+- Frames (modo `scene`): `ffmpeg -vf "select='eq(n,0)+gt(scene,T)',scale,showinfo" -fps_mode vfr`,
+  com as marcas de tempo lidas do `pts_time` que o `showinfo` emite. O `-fps_mode` existe do
+  ffmpeg 5.1 em diante; o antigo `-vsync` foi **removido no ffmpeg 9** ("Unrecognized option
+  'vsync'") e derrubava a detecção de cena em silêncio — o script escolhe a flag conforme a
+  versão instalada. Abordagem tomada de
   [bradautomates/claude-video](https://github.com/bradautomates/claude-video) (MIT), que
   resolve o mesmo problema numa skill sob demanda.
 - Frames (modo `interval`): `ffmpeg -vf "fps=1/N,scale"`. Nos dois, `framesMax` é o teto.

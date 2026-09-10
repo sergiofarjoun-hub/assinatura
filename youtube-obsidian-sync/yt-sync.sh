@@ -16,7 +16,9 @@ py() { /usr/bin/env python3 -c "import json,sys;print(json.load(open('$CONFIG'))
 VAULT_DIR="$(py "['vaultDir']")"
 SUBDIR="$(py ".get('subdir','YouTube')")"
 QUEUE_REL="$(py ".get('queueFile','YouTube/_fila.md')")"
-SUB_LANGS="$(py ".get('ytdlpSubLangs','pt.*,en.*')")"
+# idiomas preferidos, em ordem (subLangs); config antiga só com ytdlpSubLangs ('pt.*,en.*') também serve
+SUB_PREFER="$(/usr/bin/env python3 -c "import json;c=json.load(open('$CONFIG'));print(','.join(c.get('subLangs') or [s.replace('.*','') for s in c.get('ytdlpSubLangs','pt.*,en.*').split(',') if s]))")"
+SLEEP_SUBTITLES=6   # pausa (s) antes de cada legenda: sem ela o YouTube devolve HTTP 429
 YTDLP="$(py ".get('ytdlpBin','yt-dlp')")"
 COOKIES_BROWSER="$(py ".get('cookiesFromBrowser','')")"
 WHISPER_CMD="$(py ".get('whisperCmd','')")"
@@ -30,6 +32,16 @@ SCENE_MIN="$(py ".get('sceneMinFrames',3)")"
 # vault indisponível (mount do NAS fora) → sai quieto, tenta na próxima execução
 [ -d "$VAULT_DIR" ] || { echo "$LOG_PREFIX Vault indisponível ($VAULT_DIR) — mount fora?"; exit 0; }
 command -v "$YTDLP" >/dev/null || { echo "$LOG_PREFIX yt-dlp não encontrado ($YTDLP). Rode: brew install yt-dlp"; exit 1; }
+
+# saída com frames em tempos irregulares: ffmpeg 5.1+ usa -fps_mode; o 4.x só conhece
+# -vsync, que o ffmpeg 9 removeu ("Unrecognized option 'vsync'")
+FPS_MODE=(-fps_mode vfr)
+if command -v ffmpeg >/dev/null; then
+  # sem pipe: com `pipefail`, um grep -q que fecha cedo mata o ffmpeg (SIGPIPE) e inverte o teste
+  FFHELP="$(ffmpeg -hide_banner -h full 2>/dev/null || true)"
+  case "$FFHELP" in *-fps_mode*) ;; *) FPS_MODE=(-vsync vfr);; esac
+  unset FFHELP
+fi
 
 # lock: impede execuções sobrepostas (stale após 30min)
 if [ -d "$LOCK" ]; then
@@ -77,14 +89,47 @@ for URL in "${URLS[@]}"; do
   WORK="$WORK_ROOT/$VID"
   rm -rf "$WORK" && mkdir -p "$WORK"
 
-  YTOPTS=(--skip-download --write-info-json --write-subs --write-auto-subs
-          --sub-langs "$SUB_LANGS" --sub-format "vtt/srt/best"
-          --no-playlist --no-progress -o "$WORK/%(id)s.%(ext)s")
+  # 1) metadados, ainda sem legenda: o info.json diz quais legendas existem
+  YTOPTS=(--skip-download --write-info-json --no-playlist --no-progress -o "$WORK/%(id)s.%(ext)s")
   [ -n "$COOKIES_BROWSER" ] && YTOPTS+=(--cookies-from-browser "$COOKIES_BROWSER")
 
   if ! "$YTDLP" "${YTOPTS[@]}" "$URL" >"$WORK/yt-dlp.log" 2>&1; then
     echo "$LOG_PREFIX ERRO no yt-dlp para $VID — veja $WORK/yt-dlp.log"
     continue
+  fi
+  INFO="$(ls "$WORK"/*.info.json 2>/dev/null | head -1 || true)"
+
+  # 2) UMA legenda só — manual no idioma preferido, senão a automática do idioma ORIGINAL,
+  #    tradução automática só na falta de original (choose_sub_langs, no yt2vault.py).
+  #    Pedir várias de uma vez (pt, pt-PT, en, en-orig) rendia HTTP 429. --load-info-json
+  #    reaproveita os metadados: não bate de novo na página do vídeo.
+  SUB_KEYS=""
+  if [ -n "$INFO" ]; then
+    SUB_KEYS="$(python3 -c "import sys,json;sys.path.insert(0,'$CONF_DIR');from yt2vault import choose_sub_langs;print(','.join(choose_sub_langs(json.load(open(sys.argv[1])),sys.argv[2].split(','))))" "$INFO" "$SUB_PREFER" 2>>"$WORK/yt-dlp.log" || true)"
+  fi
+  if [ -n "$SUB_KEYS" ]; then
+    echo "$LOG_PREFIX Legenda escolhida: $SUB_KEYS"
+    SUBOPTS=(--load-info-json "$INFO" --skip-download --write-subs --write-auto-subs
+             --sub-langs "$SUB_KEYS" --sub-format "vtt/srt/best" --sleep-subtitles "$SLEEP_SUBTITLES"
+             --no-progress -o "$WORK/%(id)s.%(ext)s")
+    [ -n "$COOKIES_BROWSER" ] && SUBOPTS+=(--cookies-from-browser "$COOKIES_BROWSER")
+    "$YTDLP" "${SUBOPTS[@]}" >>"$WORK/yt-dlp.log" 2>&1 \
+      || echo "$LOG_PREFIX AVISO: legenda $SUB_KEYS falhou — veja $WORK/yt-dlp.log"
+  else
+    echo "$LOG_PREFIX Vídeo sem legenda (nem automática)."
+  fi
+
+  # intervalo do fallback dos frames: framesEvery é o MÍNIMO; em vídeo longo cresce para os
+  # framesMax frames se espalharem por toda a duração (antes 60 × 10 s parava aos 10 min).
+  # A última imagem fica a menos de um intervalo do fim — amostragem por intervalo é assim.
+  DUR=0
+  if [ -n "$INFO" ]; then
+    DUR="$(python3 -c "import json,sys;print(int(json.load(open(sys.argv[1])).get('duration') or 0))" "$INFO" 2>/dev/null || echo 0)"
+  fi
+  EVERY="$FRAMES_EVERY"
+  if [ "$DUR" -gt 0 ] 2>/dev/null && [ "$FRAMES_EVERY" -gt 0 ] 2>/dev/null; then
+    NEED=$(( (DUR + FRAMES_MAX - 1) / FRAMES_MAX ))
+    if [ "$NEED" -gt "$EVERY" ]; then EVERY="$NEED"; fi
   fi
 
   # Sem legenda e com whisperCmd configurado: baixa o áudio e transcreve localmente.
@@ -108,7 +153,7 @@ for URL in "${URLS[@]}"; do
       if [ "$FRAMES_MODE" = "scene" ]; then
         echo "$LOG_PREFIX Extraindo frames por mudança de cena (limiar $SCENE_THRESHOLD)..."
       else
-        echo "$LOG_PREFIX Extraindo 1 frame a cada ${FRAMES_EVERY}s..."
+        echo "$LOG_PREFIX Extraindo 1 frame a cada ${EVERY}s..."
       fi
       VOPTS=(-f "bv*[height<=$FRAMES_HEIGHT]+ba/b[height<=$FRAMES_HEIGHT]/b"
              --no-playlist --no-progress -o "$WORK/video.%(ext)s")
@@ -118,13 +163,18 @@ for URL in "${URLS[@]}"; do
         if [ -n "$VIDEO" ]; then
           SCALE="scale=-2:'min($FRAMES_HEIGHT,ih)'"
 
-          # Corte por intervalo fixo: 1 frame a cada N segundos.
+          # Corte por intervalo fixo: 1 frame a cada EVERY segundos. Deixa em times.txt
+          # o segundo de cada frame (i × EVERY), que é o que o yt2vault lê.
           extract_interval() {
+            local rc=0 n
             rm -rf "$WORK/frames"; mkdir -p "$WORK/frames"
             ffmpeg -nostdin -loglevel error -i "$VIDEO" \
-              -vf "fps=1/$FRAMES_EVERY,$SCALE" \
+              -vf "fps=1/$EVERY,$SCALE" \
               -frames:v "$FRAMES_MAX" -q:v 4 "$WORK/frames/frame-%04d.jpg" \
-              >>"$WORK/ffmpeg.log" 2>&1
+              >>"$WORK/ffmpeg.log" 2>&1 || rc=$?
+            n="$(find "$WORK/frames" -name '*.jpg' 2>/dev/null | wc -l | tr -d ' ')"
+            if [ "${n:-0}" -gt 0 ]; then seq 0 "$EVERY" $(( EVERY * (n - 1) )) > "$WORK/frames/times.txt"; fi
+            return $rc
           }
 
           # Corte por mudança de cena: pega o primeiro frame e cada troca de
@@ -133,29 +183,33 @@ for URL in "${URLS[@]}"; do
           # O showinfo imprime pts_time de cada frame emitido, na ordem — daí
           # sai o times.txt que dá a marca de tempo real de cada imagem.
           extract_scene() {
+            local rc=0
             rm -rf "$WORK/frames"; mkdir -p "$WORK/frames"
             ffmpeg -nostdin -loglevel info -i "$VIDEO" \
               -vf "select='eq(n\,0)+gt(scene\,$SCENE_THRESHOLD)',$SCALE,showinfo" \
-              -vsync vfr -frames:v "$FRAMES_MAX" -q:v 4 "$WORK/frames/frame-%04d.jpg" \
-              >"$WORK/ffmpeg-scene.log" 2>&1
+              "${FPS_MODE[@]}" -frames:v "$FRAMES_MAX" -q:v 4 "$WORK/frames/frame-%04d.jpg" \
+              >"$WORK/ffmpeg-scene.log" 2>&1 || rc=$?
             grep -o 'pts_time:[0-9.]*' "$WORK/ffmpeg-scene.log" \
               | cut -d: -f2 > "$WORK/frames/times.txt" || true
+            return $rc   # ffmpeg recusou a linha (flag errada)? o chamador avisa
           }
 
           if [ "$FRAMES_MODE" = "scene" ]; then
             extract_scene || echo "$LOG_PREFIX AVISO: ffmpeg falhou — veja $WORK/ffmpeg-scene.log"
-            N_SCENE="$(ls "$WORK/frames"/*.jpg 2>/dev/null | wc -l | tr -d ' ')"
+            # find, não ls: com set -e + pipefail, `ls *.jpg` sem resultado derrubava o script em silêncio
+            N_SCENE="$(find "$WORK/frames" -name '*.jpg' 2>/dev/null | wc -l | tr -d ' ')"
             # Vídeo de plano único (talking head) rende quase nenhuma cena —
             # nesse caso o intervalo fixo cobre melhor.
             if [ "${N_SCENE:-0}" -lt "$SCENE_MIN" ]; then
-              echo "$LOG_PREFIX Só $N_SCENE cena(s) detectada(s) — caindo para intervalo fixo."
+              echo "$LOG_PREFIX Só $N_SCENE cena(s) detectada(s) — caindo para 1 frame a cada ${EVERY}s."
               extract_interval || echo "$LOG_PREFIX AVISO: ffmpeg falhou — veja $WORK/ffmpeg.log"
             fi
           else
             extract_interval || echo "$LOG_PREFIX AVISO: ffmpeg falhou — veja $WORK/ffmpeg.log"
           fi
           rm -f "$VIDEO"   # o vídeo em si nunca fica no disco
-          echo "$LOG_PREFIX $(ls "$WORK/frames" 2>/dev/null | wc -l | tr -d ' ') frames extraídos."
+          # só .jpg: o times.txt mora na mesma pasta e não é frame
+          echo "$LOG_PREFIX $(find "$WORK/frames" -name '*.jpg' 2>/dev/null | wc -l | tr -d ' ') frames extraídos."
         fi
       else
         echo "$LOG_PREFIX AVISO: não consegui baixar o vídeo para extrair frames — veja $WORK/yt-dlp.log"

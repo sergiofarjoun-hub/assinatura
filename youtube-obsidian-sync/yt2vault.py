@@ -141,6 +141,77 @@ def pick_subtitle(workdir: str, prefer: list[str]) -> tuple[str | None, str | No
     return best, lang_of(best)
 
 
+# ---------------------------------------------------------- qual legenda baixar
+# Mesma função da skill .claude/skills/watch/scripts/watch.py (mantida em sincronia à mão).
+# O yt-sync.sh chama isto para pedir UMA legenda só ao yt-dlp.
+
+def choose_sub_langs(info: dict, prefer: list[str]) -> list[str]:
+    """Escolhe UMA legenda para pedir ao yt-dlp (chaves para --sub-langs; vazia = nenhuma).
+
+    Cada arquivo de legenda é um pedido ao YouTube, e pedir vários de uma vez (pt, pt-PT,
+    en, en-orig) rende HTTP 429. Ordem: manual no idioma preferido → manual no idioma
+    original → automática do idioma ORIGINAL → tradução automática no idioma preferido
+    (pior em termo técnico; só na falta de original) → qualquer uma.
+
+    O yt-dlp nomeia as automáticas de três jeitos, conforme o cliente do YouTube que
+    respondeu: 'en-orig' + 'en' + traduções 'pt'; só 'en'; ou 'en' + traduções 'pt-en'
+    ("Portuguese from English"). Os três são tratados aqui.
+    """
+    manual = {k: v for k, v in (info.get("subtitles") or {}).items() if k != "live_chat"}
+    auto = dict(info.get("automatic_captions") or {})
+
+    def translated(table: dict, key: str) -> bool:
+        return any(" from " in (t.get("name") or "") for t in table.get(key) or [])
+
+    def find(table: dict, lang: str, originals_only: bool = False) -> str | None:
+        """'pt' casa com 'pt' (exato, primeiro) ou 'pt-BR'; nunca com '-orig'."""
+        lang = lang.lower()
+        keys = [k for k in table if not k.lower().endswith("-orig")
+                and not (originals_only and translated(table, k))]
+        for k in keys:
+            if k.lower() == lang:
+                return k
+        for k in keys:
+            if k.lower().startswith(lang + "-"):
+                return k
+        return None
+
+    for lang in prefer:                                   # 1. manual no idioma preferido
+        k = find(manual, lang)
+        if k:
+            return [k]
+
+    orig_keys = [k for k in auto if k.lower().endswith("-orig")]
+    orig = orig_keys[0][:-5] if orig_keys else (info.get("language") or "").split("-")[0]
+    if orig:
+        k = find(manual, orig)                            # 2. manual no idioma original
+        if k:
+            return [k]
+        if orig_keys:                                     # 3. automática do idioma original
+            return [orig_keys[0]]
+        k = find(auto, orig, originals_only=True)
+        if k:
+            return [k]
+    else:
+        originals = [k for k in auto if not k.lower().endswith("-orig") and not translated(auto, k)]
+        if originals:                                     # 3'. original sem saber o idioma
+            for lang in prefer:
+                k = find({k: auto[k] for k in originals}, lang)
+                if k:
+                    return [k]
+            return [originals[0]]
+
+    for lang in prefer:                                   # 4. tradução automática
+        k = find(auto, lang)
+        if k:
+            return [k]
+    if manual:                                            # 5. o que houver
+        return [next(iter(manual))]
+    if auto:
+        return [next(iter(auto))]
+    return []
+
+
 def group_transcript(cues: list[tuple[str, str]], every_seconds: int = 30) -> str:
     """Agrupa os cues em parágrafos com marca de tempo a cada ~30s."""
     if not cues:
@@ -185,8 +256,10 @@ def install_frames(cfg: dict, workdir: str, vid: str) -> str:
     dest = os.path.join(cfg["vaultDir"], cfg.get("subdir", "YouTube"), "_frames", vid)
     os.makedirs(dest, exist_ok=True)
 
-    # No modo cena os frames não são equidistantes: o ffmpeg (showinfo) deixou
-    # o tempo real de cada um em times.txt. Sem ele, cai no intervalo fixo.
+    # O yt-sync.sh deixa em times.txt o segundo real de cada frame: no modo cena
+    # vem do showinfo do ffmpeg; no intervalo fixo é i × intervalo — e o intervalo
+    # pode ser maior que framesEvery (cresce para cobrir vídeo longo). Sem o
+    # arquivo (rodada antiga), cai em framesEvery.
     times: list[int] = []
     times_file = os.path.join(workdir, "frames", "times.txt")
     if os.path.isfile(times_file):

@@ -26,8 +26,15 @@ está na tela e não na fala.
    Imprime o caminho de um `manifest.md`. Opções úteis:
    - `--no-frames` — só transcrição (entrevista, podcast, aula falada): mais rápido, não baixa o vídeo.
    - `--scene 0.2` — mais frames (screencast com transições sutis); `--scene 0.5` — menos (câmera tremida).
-   - `--every 5` — intervalo do fallback quando o vídeo é de plano único.
+   - `--every 5` — intervalo **mínimo** do fallback (plano único). Em vídeo longo ele cresce
+     sozinho para os `--max-frames` se espalharem por toda a duração; a última imagem fica a
+     menos de um intervalo do fim.
+   - `--max-frames 120` — teto de frames; o manifest avisa quando o teto cortou o vídeo no meio.
    - `--cookies-from-browser safari` — vídeo privado ou com restrição de idade (só no Mac).
+
+   A legenda vem **uma só**: manual no idioma preferido, senão a automática do idioma
+   **original** do vídeo. `--langs` vale para a manual e para a tradução automática — que é
+   o último recurso, por errar mais em termo técnico. Pedir várias de uma vez rendia HTTP 429.
 
 3. **Ler, nesta ordem**: o `manifest.md` (metadados + lista), depois `transcript.md`,
    depois **cada frame** listado, com a ferramenta Read. Não pule frames: um Short de
@@ -57,9 +64,14 @@ O usuário raramente quer só um resumo. Padrões frequentes:
   áudio não sai da máquina. Diga isso ao usuário e trabalhe com os frames; ofereça
   Whisper local (no Mac: `mlx-whisper`/`whisper.cpp`) se ele quiser a fala.
 - **Legenda automática** tem erros de reconhecimento, principalmente em nome próprio e
-  termo técnico. Quando um termo importar, confira contra os frames antes de afirmar.
+  termo técnico. Quando um termo importar, confira contra os frames antes de afirmar. Se o
+  manifest disser `pt` num vídeo falado em inglês, é tradução automática da legenda
+  automática — dois erros empilhados; prefira conferir no original.
 - **Frames são amostras**: entre um e outro pode ter acontecido algo. Se a resposta
   depende de um momento não coberto, rode de novo com `--scene` menor ou `--every` menor.
+- **Erro de ffmpeg não derruba o script** — só entrega menos frames. Se o manifest trouxer
+  poucos frames ou o aviso de teto, olhe o `ffmpeg-scene.log` da pasta de saída antes de
+  concluir que o vídeo é assim mesmo.
 
 ## Quando a rede bloqueia
 
