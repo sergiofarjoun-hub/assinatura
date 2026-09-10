@@ -1,3 +1,8 @@
+> **Atualização 10/09/2026 (Mac do Sergio):** este bloqueio valeu só para o ambiente em nuvem.
+> No Mac o YouTube respondeu e o vídeo foi processado por completo — veja `RESUMO.md`, `transcript.md`,
+> `frames/` (0:00–9:50, gerados pelo `watch.py`) e `frames-complemento/` (10:00–21:30, extraídos à mão).
+> O arquivo abaixo fica como registro do que aconteceu na nuvem.
+
 # Rede bloqueada — YouTube inacessível deste ambiente
 
 - Vídeo: https://www.youtube.com/watch?v=8NSyI-npJCU
