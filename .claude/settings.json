@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Skill",
+      "ToolSearch",
+      "Artifact",
+      "Bash(TZ=America/Sao_Paulo date:*)",
+      "Bash(date:*)",
+      "Bash(pip install pillow:*)",
+      "Bash(python3:*)",
+      "mcp__Gmail__search_threads",
+      "mcp__Gmail__get_thread",
+      "mcp__Gmail__list_labels",
+      "mcp__Google_Calendar__list_calendars",
+      "mcp__Google_Calendar__list_events",
+      "mcp__Google_Calendar__get_event",
+      "mcp__Google_Calendar__search_events",
+      "mcp__Granola__list_meetings",
+      "mcp__Granola__get_meetings",
+      "mcp__Granola__query_granola_meetings",
+      "mcp__Granola__list_meeting_folders",
+      "mcp__Slack__slack_read_channel",
+      "mcp__Slack__slack_read_thread",
+      "mcp__Slack__slack_list_user_channels",
+      "mcp__Slack__slack_search_public_and_private"
+    ]
+  }
+}
