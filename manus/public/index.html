@@ -383,6 +383,17 @@ async function init() {
   await refreshFiles();
 }
 
+// Pré-preenche a tarefa vinda de um link externo (ex.: Command Center, ?task=...).
+// Só preenche o campo — o envio continua sendo um clique seu, nunca automático.
+(function prefillFromUrl() {
+  const task = new URLSearchParams(location.search).get("task");
+  if (!task) return;
+  input.value = task;
+  input.rows = Math.min(6, Math.max(2, task.split("\n").length));
+  input.focus();
+  history.replaceState(null, "", location.pathname); // evita repreencher no reload
+})();
+
 (async () => {
   const { required } = await (await fetch("/api/auth-required")).json();
   if (required && !authToken) {

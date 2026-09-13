@@ -87,6 +87,22 @@ extras — mesmo esquema no gerador e na página):
   mais de 30 dias sem `last_seen` recente podem ser ignorados na leitura; não
   precisa apagar docs.
 
+### Fila de delegação (coleção `queue`)
+
+O botão "☁ delegar ao Claude" do painel grava docs na coleção `queue`
+(mesmo `doc_id` do item; campos `title`, `sphere`, `source`, `status`,
+`requested_at`). **Em toda geração, leia também `queue`**: cada doc com
+`status: "queued"` é um pedido do Sergio para você executar aquela pendência.
+
+- Execute o que for seguro sem confirmação: rascunhos de e-mail
+  (`create_draft`, nunca `send`), minutas de cobrança de renovação, resumos,
+  pesquisas. Ao concluir, `update` do doc para `status: "done"` +
+  `result` (1 linha) e relate no chat o que foi feito.
+- O que exigir ação irreversível (enviar e-mail, pagar, cancelar), deixe
+  pronto como rascunho, marque `status: "ready"` e peça confirmação no chat.
+- Não conseguiu (falta acesso/contexto)? `status: "blocked"` + `result`
+  explicando, e diga no chat o que falta.
+
 ## 4. Coleta de dados (chamadas em paralelo sempre que possível)
 
 Colete apenas de integrações disponíveis na sessão (verifique com ToolSearch);
@@ -196,7 +212,20 @@ checkbox sem texto):
 - `adiar` (esmaece, grava `snoozed_until` = amanhã e vira `retomar`);
 - item de e-mail: `✉ responder` — link `https://mail.google.com/mail/u/0/
   #inbox/<threadId>` abrindo em nova aba;
-- evento com videochamada: `📹 entrar`.
+- evento com videochamada: `📹 entrar`;
+- `🤖 agente` — link `https://hamsa-usa.taild4370d.ts.net:3010/?task=<texto
+  da tarefa URL-encoded>` (nova aba): abre o Hamsa Agent do NAS com a tarefa
+  pré-preenchida (o `manus/` aceita `?task=`); inclua o link do e-mail no
+  texto quando houver;
+- `☁ delegar ao Claude` — grava o item na coleção `queue` (seção 3); botão
+  só aparece quando o `db` conecta, e vira "na fila"/"feito" conforme o
+  status.
+
+**Integração Agentic OS:** o cabeçalho traz uma barra de atalhos-pílula para
+os apps da tailnet (`DEPLOY.md` tem as portas): Hub `/`, Renovações `:8443`,
+Claims `:10000`, Multi Cálculo `:10001`, Multi Apólices `:10002`, Pipeline
+`:10003`, Hamsa Agent `:3010` — base `https://hamsa-usa.taild4370d.ts.net`.
+Com nota de que exigem Tailscale ligado.
 
 Estado gravado no `db` (seção 3), com fallback `localStorage`. Mostrar linha
 de progresso no cabeçalho ("X concluído(s) · Y adiado(s)") que atualiza ao
