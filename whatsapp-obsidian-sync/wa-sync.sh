@@ -21,9 +21,19 @@ VCF="$(py ".get('contactsVcf','')")"
 [ -d "$BACKUP_DIR" ] || { echo "$LOG_PREFIX Pasta de backup indisponível ($BACKUP_DIR) — mount fora? O backup do celular já subiu?"; exit 0; }
 [ -d "$VAULT_DIR" ] || { echo "$LOG_PREFIX Vault indisponível ($VAULT_DIR) — mount fora?"; exit 0; }
 
-# backup mais recente (o WhatsApp mantém msgstore.db.crypt15 + datados)
-NEWEST="$(ls -t "$BACKUP_DIR"/msgstore*.crypt15 2>/dev/null | head -1 || true)"
-[ -n "$NEWEST" ] || { echo "$LOG_PREFIX Nenhum msgstore*.crypt15 em $BACKUP_DIR ainda."; exit 0; }
+# O WhatsApp gera backup COMPLETO (msgstore.db.crypt15) + incrementos diários
+# (msgstore-increment-N...). Incrementos são parciais e ilegíveis isoladamente —
+# usamos sempre o completo mais recente; o conteúdo dos incrementos entra quando
+# o WhatsApp consolidar o próximo completo (ou no "Fazer backup" manual).
+NEWEST="$(ls -t "$BACKUP_DIR"/msgstore*.crypt15 2>/dev/null | grep -v increment | head -1 || true)"
+if [ -z "$NEWEST" ]; then
+  if ls "$BACKUP_DIR"/msgstore*increment*.crypt15 >/dev/null 2>&1; then
+    echo "$LOG_PREFIX Só há backups incrementais — aguardando o próximo completo (ou toque em 'Fazer backup' no WhatsApp)."
+  else
+    echo "$LOG_PREFIX Nenhum msgstore*.crypt15 em $BACKUP_DIR ainda."
+  fi
+  exit 0
+fi
 
 SIG="$(stat -f '%N %m %z' "$NEWEST" 2>/dev/null || stat -c '%n %Y %s' "$NEWEST")"
 if [ -f "$STAMP" ] && [ "$(cat "$STAMP")" = "$SIG" ]; then
@@ -42,8 +52,9 @@ fi
 # descriptografa e exporta JSON (sem HTML); tudo em pasta de trabalho local
 (
   cd "$WORK"
+  # ${EXTRA[@]+...}: expansão segura de array vazio no bash 3.2 do macOS (set -u)
   wtsexporter -a -b "$NEWEST" -k "$KEY_HEX" --json result.json --no-html \
-    --avoid-encoding-json --dont-filter-empty "${EXTRA[@]}" >wtsexporter.log 2>&1
+    --avoid-encoding-json --dont-filter-empty ${EXTRA[@]+"${EXTRA[@]}"} >wtsexporter.log 2>&1
 ) || { echo "$LOG_PREFIX ERRO no wtsexporter — veja $WORK/wtsexporter.log (chave certa?)"; exit 1; }
 
 [ -f "$WORK/result.json" ] || { echo "$LOG_PREFIX wtsexporter não gerou result.json"; exit 1; }
