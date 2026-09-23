@@ -222,7 +222,14 @@ def choose_sub_langs(info: dict, prefer: list[str]) -> list[str]:
             return [k]
 
     orig_keys = [k for k in auto if k.lower().endswith("-orig")]
-    orig = orig_keys[0][:-5] if orig_keys else (info.get("language") or "").split("-")[0]
+    declared = (info.get("language") or "").split("-")[0].lower()
+    if declared:
+        # O YouTube pode listar várias faixas "-orig" (dublagens automáticas); sem isso,
+        # pegávamos a primeira da lista (ordem arbitrária da API), que pode não ser o
+        # idioma original de fato falado no vídeo. Prioriza a que bate com o idioma
+        # declarado pelo próprio YouTube em info['language'].
+        orig_keys = sorted(orig_keys, key=lambda k: k.lower()[:-5] != declared)
+    orig = orig_keys[0][:-5] if orig_keys else declared
     if orig:
         k = find(manual, orig)                            # 2. manual no idioma original
         if k:
