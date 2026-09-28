@@ -1,0 +1,24 @@
+services:
+  whatsapp-agent:
+    build: .
+    container_name: hamsa-whatsapp-agent
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - ./data:/app/data
+      # Pasta de clientes do NAS montada no container (leitura/escrita).
+      # Defina CLIENTES_HOST_DIR no .env com o caminho REAL no NAS
+      # (ex.: /volume1/dados/CLIENTES). Dentro do container é sempre /clientes.
+      - ${CLIENTES_HOST_DIR:?defina CLIENTES_HOST_DIR no .env}:/clientes
+      # Cofre de conhecimento (Obsidian) — o bot lê as fichas de produto daqui.
+      # Host no NAS: /volume1/SERVER/BASE_CONHECIMENTO (ajuste em .env se mudar).
+      - ${BASE_CONHECIMENTO_HOST_DIR:-/volume1/SERVER/BASE_CONHECIMENTO}:/base_conhecimento:ro
+      # Banco do RENOVACOES APP (só leitura) — fonte do plano/franquia ATUAIS
+      # (última renovação). Ative definindo RENOVACOES_DB_HOST + RENOVACOES_DB no
+      # .env. Default aponta para ./data (inócuo) para não quebrar se não usar.
+      - ${RENOVACOES_DB_HOST:-./data}:/renovacoes:ro
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "3"

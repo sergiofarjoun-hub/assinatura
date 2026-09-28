@@ -12,6 +12,11 @@
 > [`renovacoes/`](renovacoes/) · [`portal/`](portal/). Fase 0 (Postgres no
 > NAS): `nas/comissoes-fase0.sh`.
 
+> 🆕 **Novo módulo:** [`whatsapp-agent/`](whatsapp-agent/) — agente de IA (Claude)
+> para o WhatsApp da Hamsa: assistente pessoal no chat "você mesmo" + atendimento
+> a clientes com handoff humano. Deploy em Docker no NAS. Ver
+> [`whatsapp-agent/README.md`](whatsapp-agent/README.md).
+
 Artefatos **prontos para deploy** que dão identidade PWA (ícone standalone na home
 do Android, sem barra do navegador) aos apps Hamsa. Produzidos a partir do símbolo
 **2026** `hamsa_simbolo_2026.png` (hamsa dourado 3D, fundo transparente).
