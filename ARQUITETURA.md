@@ -27,6 +27,10 @@ sidebar, não como PWA separado.
 | Comunicação (WhatsApp/e-mail) | [`comunicacao/`](comunicacao/) | `comunicacao` | especificado | `cadastro` |
 | Portal do Cliente | [`portal/`](portal/) | `portal` | especificado (última fase) | todos acima |
 
+Fora do banco unificado, há também a integração **Agente WhatsApp ×
+Multicálculo** (cotação automática pelo WhatsApp com aprovação humana):
+desenho em [`agente-wa/`](agente-wa/).
+
 **Ordem de aplicação dos schemas** (respeita as FKs):
 `comissoes` → `cadastro` → `comunicacao` → `propostas` → `renovacoes` → `portal`.
 Todos os `schema.sql` são idempotentes; aplicar tudo de novo nunca quebra.
