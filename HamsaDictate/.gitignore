@@ -1,0 +1,11 @@
+# Gerado pelo XcodeGen — project.yml é a fonte da verdade
+HamsaDictate.xcodeproj/
+
+# Xcode
+xcuserdata/
+DerivedData/
+*.xcworkspace/xcuserdata/
+
+# SPM
+.build/
+.swiftpm/
