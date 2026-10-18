@@ -67,7 +67,9 @@ servem aos dois.
   `slidesMaxSize` px (padrão 1440). Nome do arquivo: `<id>-NNN-SSSSS.jpg`, com SSSSS = número
   do slide. A Transcrição traz a frase `_Post de imagens, sem áudio…_`.
 - **Reel (ou post de um vídeo só):** baixa o vídeo e corta frames como no YouTube; sem legenda
-  (vale `whisperCmd`, se configurado).
+  (vale `whisperCmd`, se configurado). O yt-dlp nem sempre devolve a duração do reel: o sync a lê com
+  `ffprobe` antes de apagar o vídeo (`duration.txt`), e o tipo da nota sai do que foi gerado (slides →
+  `imagens`; frames de vídeo → `video`), nunca da duração sozinha (ensaiado com um reel real em 18/10/2026).
 - **Limite conhecido:** carrossel com um item de vídeo fica só com a capa desse item.
 - Frontmatter: `instagram_id` (em vez de `youtube_id`), `fonte: "instagram"`, `tipo: "imagens"`
   ou `"video"`, `canal` (nome), `perfil` (`@usuário`); tag `instagram`. Título = primeira linha

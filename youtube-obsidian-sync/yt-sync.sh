@@ -167,6 +167,11 @@ frames_do_video() {
   else
     extract_interval || echo "$LOG_PREFIX AVISO: ffmpeg falhou — veja $WORK/ffmpeg.log"
   fi
+  # duração lida do próprio arquivo (o yt-dlp nem sempre a devolve no Instagram); o yt2vault usa
+  # quando o info.json vem sem "duration"
+  if command -v ffprobe >/dev/null; then
+    ffprobe -v error -show_entries format=duration -of csv=p=0 "$VIDEO" > "$WORK/duration.txt" 2>/dev/null || true
+  fi
   rm -f "$VIDEO"   # o vídeo em si nunca fica no disco
   # só .jpg: o times.txt mora na mesma pasta e não é frame
   echo "$LOG_PREFIX $(find "$WORK/frames" -name '*.jpg' 2>/dev/null | wc -l | tr -d ' ') frames extraídos."

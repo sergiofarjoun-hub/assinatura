@@ -542,10 +542,27 @@ def ingest(cfg: dict, workdir: str, url: str) -> int:
     transcript = group_transcript(parse_subtitles(sub_file)) if sub_file else ""
 
     vid = info.get("id") or video_id(url) or "video"
+    # duração: o yt-dlp nem sempre a devolve no Instagram; o yt-sync grava em duration.txt a que o
+    # ffprobe leu do vídeo antes de apagá-lo
+    if not info.get("duration"):
+        try:
+            with open(os.path.join(workdir, "duration.txt"), "r", encoding="utf-8") as fh:
+                info["duration"] = float(fh.read().strip() or 0) or None
+        except (OSError, ValueError):
+            pass
     frames_section = install_frames(cfg, workdir, vid)
     if fonte == "instagram":
-        kind = "imagens" if (os.path.isfile(os.path.join(workdir, "frames", "labels.txt"))
-                             or not info.get("duration")) else "video"
+        # imagens = o yt-sync deixou labels.txt (um rótulo por slide); vídeo = formatos de vídeo no
+        # info.json, ou frames cortados de um vídeo (times.txt), ou duração conhecida. Nunca pela
+        # duração sozinha: o yt-dlp não a devolve em todo reel (18/10/2026).
+        frames_dir = os.path.join(workdir, "frames")
+        if os.path.isfile(os.path.join(frames_dir, "labels.txt")):
+            kind = "imagens"
+        elif info.get("formats") or info.get("duration") or os.path.isfile(os.path.join(frames_dir, "times.txt")) \
+                or os.path.isfile(os.path.join(workdir, "duration.txt")):
+            kind = "video"
+        else:
+            kind = "imagens"
         note_name, content = build_note_instagram(info, transcript, sub_lang, cfg, frames_section, kind)
     else:
         note_name, content = build_note(info, transcript, sub_lang, cfg, frames_section)
