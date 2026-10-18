@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
-yt2vault — transforma o que o yt-dlp baixou de um vídeo (metadados + legenda)
-numa nota Markdown no vault do Obsidian.
+yt2vault — transforma o que o yt-dlp baixou de um vídeo do YouTube (metadados + legenda)
+ou de um post/reel do Instagram (texto do post + imagens de cada slide) numa nota Markdown
+no vault do Obsidian.
 
 Modos:
   yt2vault.py --processed <config.json>
@@ -40,19 +41,54 @@ def yaml_str(s) -> str:
     return f'"{s}"'
 
 
+YOUTUBE_PATTERNS = (
+    r"(?:youtube\.com|youtube-nocookie\.com)/(?:shorts|embed|live|v)/([\w-]{11})",
+    r"(?:youtube\.com)/watch\?(?:[^&]*&)*v=([\w-]{11})",
+    r"youtu\.be/([\w-]{11})",
+)
+# Post, reel ou IGTV do Instagram (18/10/2026): instagram.com/p/<código>/, /reel/, /reels/, /tv/ —
+# também com o usuário na frente (instagram.com/<user>/p/<código>/). O código ("shortcode") tem 11
+# caracteres nos posts atuais; aceita de 5 a 32 para não recusar post antigo.
+INSTAGRAM_PATTERN = r"instagram\.com/(?:[A-Za-z0-9_.]+/)?(?:p|reel|reels|tv)/([\w-]{5,32})"
+
+
+def source_of(url: str) -> str | None:
+    """'youtube', 'instagram' ou None — de onde a URL é. O id cru de 11 caracteres conta como YouTube."""
+    u = url or ""
+    if any(re.search(pat, u) for pat in YOUTUBE_PATTERNS):
+        return "youtube"
+    if re.search(INSTAGRAM_PATTERN, u):
+        return "instagram"
+    return "youtube" if re.fullmatch(r"[\w-]{11}", u.strip()) else None
+
+
 def video_id(url: str) -> str | None:
-    """Extrai o ID de 11 caracteres de qualquer forma de URL do YouTube."""
-    patterns = (
-        r"(?:youtube\.com|youtube-nocookie\.com)/(?:shorts|embed|live|v)/([\w-]{11})",
-        r"(?:youtube\.com)/watch\?(?:[^&]*&)*v=([\w-]{11})",
-        r"youtu\.be/([\w-]{11})",
-    )
-    for pat in patterns:
+    """Extrai o id: os 11 caracteres de qualquer forma de URL do YouTube, ou o código do post/reel
+    do Instagram (instagram.com/p|reel|reels|tv/<código>)."""
+    for pat in YOUTUBE_PATTERNS + (INSTAGRAM_PATTERN,):
         m = re.search(pat, url or "")
         if m:
             return m.group(1)
     m = re.fullmatch(r"[\w-]{11}", (url or "").strip())
     return m.group(0) if m else None
+
+
+def instagram_kind(workdir: str) -> str:
+    """O que o yt-dlp trouxe de um link do Instagram: 'imagens' (post ou carrossel: cada item chega
+    como miniatura, sem formato de vídeo), 'video' (reel ou post de um vídeo só) ou '' (nada).
+    Carrossel = playlist: o info.json do post fica na raiz do workdir e os itens em itens/.
+    Reel e post de uma imagem só não têm playlist: o único info.json está em itens/."""
+    if glob.glob(os.path.join(workdir, "*.info.json")):
+        return "imagens"
+    itens = sorted(glob.glob(os.path.join(workdir, "itens", "*.info.json")))
+    if len(itens) == 1:
+        try:
+            with open(itens[0], "r", encoding="utf-8") as fh:
+                d = json.load(fh)
+        except (OSError, ValueError):
+            return ""
+        return "video" if (d.get("formats") or d.get("duration")) else "imagens"
+    return "imagens" if itens else ""
 
 
 def hhmmss(seconds) -> str:
@@ -277,6 +313,16 @@ def install_frames(cfg: dict, workdir: str, vid: str) -> str:
                 except ValueError:
                     continue
 
+    # Post de imagens do Instagram (carrossel): o yt-sync deixa em labels.txt um rótulo por
+    # imagem ("slide 1/9"), na mesma ordem dos arquivos. Aí não há segundo nem marca de tempo —
+    # a imagem É o slide. O nome mantém o padrão <id>-NNN-SSSSS.jpg (SSSSS = número do slide),
+    # que a rotina youtube-resumo e o hamsa_os.py já conhecem.
+    labels: list[str] = []
+    labels_file = os.path.join(workdir, "frames", "labels.txt")
+    if os.path.isfile(labels_file):
+        with open(labels_file, "r", encoding="utf-8") as fh:
+            labels = [line.strip() for line in fh if line.strip()]
+
     # Uma mesma transição costuma disparar dois frames seguidos; guardar os dois
     # só polui a nota. Mantém o primeiro de cada janela de `min_gap` segundos.
     min_gap = int(cfg.get("frameMinGap", 1))
@@ -285,6 +331,14 @@ def install_frames(cfg: dict, workdir: str, vid: str) -> str:
     kept = 0
     last_ts: int | None = None
     for i, src in enumerate(frames):
+        if labels:                                   # slides: todos contam, sem filtro de intervalo
+            name = f"{vid}-{kept:03d}-{i + 1:05d}.jpg"
+            shutil.copy2(src, os.path.join(dest, name))
+            lines.append(f"**[{labels[i] if i < len(labels) else f'slide {i + 1}'}]**")
+            lines.append(f"![[_frames/{vid}/{name}]]")
+            lines.append("")
+            kept += 1
+            continue
         ts = times[i] if i < len(times) else i * every
         if last_ts is not None and ts - last_ts < min_gap:
             continue
@@ -387,13 +441,101 @@ def build_note(info: dict, transcript: str, sub_lang: str | None, cfg: dict,
     return note_name, "\n".join(front) + "\n\n" + "\n".join(body) + "\n"
 
 
+def clean_instagram_url(url: str) -> str:
+    """https://www.instagram.com/p/<id>/ (ou /reel/<id>/): sem query, sem fragmento, sem usuário."""
+    m = re.search(INSTAGRAM_PATTERN, url or "")
+    if not m:
+        return ""
+    tipo = re.search(r"/(p|reel|reels|tv)/", m.group(0))
+    kind = "reel" if tipo and tipo.group(1) in ("reel", "reels") else "p"
+    return f"https://www.instagram.com/{kind}/{m.group(1)}/"
+
+
+def instagram_title(info: dict) -> str:
+    """Título da nota de um post do Instagram. O yt-dlp devolve só "Post by <user>"; vale mais a
+    primeira linha do texto do post (até 70 caracteres). Sem texto: "Post de @<user>"."""
+    desc = (info.get("description") or "").strip()
+    first = next((ln.strip() for ln in desc.splitlines() if ln.strip()), "")
+    first = re.sub(r"\s+", " ", first)
+    if len(first) > 70:
+        first = first[:70].rsplit(" ", 1)[0].rstrip(" ,;:-") + "…"
+    user = info.get("channel") or info.get("uploader_id") or ""
+    return first or (f"Post de @{user}" if user else (info.get("title") or info.get("id") or "Post"))
+
+
+def build_note_instagram(info: dict, transcript: str, sub_lang: str | None, cfg: dict,
+                         frames_section: str = "", kind: str = "imagens") -> tuple[str, str]:
+    """Nota de um post ou reel do Instagram (18/10/2026). Mesma estrutura da nota do YouTube —
+    frontmatter com `importado:`, linha de link, Descrição, Transcrição, Frames — para a rotina
+    youtube-resumo e o hamsa_os.py tratarem as duas do mesmo jeito. Diferenças: `instagram_id`
+    (não `youtube_id`), `fonte: "instagram"`, `tipo: "imagens"|"video"`, link "Ver no Instagram",
+    e em post de imagens a seção Frames traz um slide por imagem, rotulado "slide N/T"."""
+    vid = info.get("id") or "?"
+    title = instagram_title(info)
+    user = info.get("channel") or info.get("uploader_id") or ""
+    perfil = f"@{user}" if user else ""
+    name = info.get("uploader") or ""
+    # só o endereço limpo (sem ?img_index=…&mdxt=… que vem colado do app): mantém /p/ ou /reel/
+    url = clean_instagram_url(info.get("webpage_url") or "") or f"https://www.instagram.com/p/{vid}/"
+    upload = info.get("upload_date") or ""
+    if re.fullmatch(r"\d{8}", upload):
+        upload = f"{upload[:4]}-{upload[4:6]}-{upload[6:]}"
+    duration = hhmmss(info.get("duration"))
+    description = (info.get("description") or "").strip()
+
+    note_name = f"{upload or datetime.now().strftime('%Y-%m-%d')} - {sanitize_filename(title)} ({vid})"
+
+    n_frames = frames_section.count("![[")
+    tags = ["instagram"] + [t for t in cfg.get("extraTags", []) if t]
+    front = [
+        "---",
+        f"instagram_id: {yaml_str(vid)}",
+        'fonte: "instagram"',
+        f"tipo: {yaml_str(kind)}",
+        f"title: {yaml_str(title)}",
+        f"canal: {yaml_str(name or perfil)}",
+        f"perfil: {yaml_str(perfil)}",
+        f"url: {yaml_str(url)}",
+        f"publicado: {yaml_str(upload)}",
+        f"duracao: {yaml_str(duration)}",
+        f"legenda: {yaml_str(sub_lang or 'nenhuma')}",
+        f"frames: {n_frames}",
+        f"importado: {yaml_str(datetime.now(timezone.utc).astimezone().strftime('%Y-%m-%d %H:%M'))}",
+        "tags:",
+    ]
+    front += [f"  - {t}" for t in tags]
+    front.append("---")
+
+    autor = " · ".join(x for x in (name, perfil) if x)
+    body = [f"# {title}", "", f"[Ver no Instagram]({url})" + (f" · {autor}" if autor else "")]
+    if description:
+        body += ["", "## Descrição", "", description]
+    body += ["", "## Transcrição", ""]
+    if transcript:
+        body.append(transcript)
+    elif kind == "imagens":
+        body.append("_Post de imagens, sem áudio: o texto do autor está na Descrição e o conteúdo "
+                    "está nos slides da seção Frames._")
+    else:
+        body.append("_Sem legenda disponível. Para transcrever, configure `whisperCmd` no config._")
+    if frames_section:
+        body += ["", "## Frames", "", frames_section]
+    return note_name, "\n".join(front) + "\n\n" + "\n".join(body) + "\n"
+
+
 def ingest(cfg: dict, workdir: str, url: str) -> int:
-    infos = glob.glob(os.path.join(workdir, "*.info.json"))
+    infos = sorted(glob.glob(os.path.join(workdir, "*.info.json")))
+    if not infos:
+        # reel ou post de uma imagem só do Instagram: não há playlist, o único info.json está em itens/
+        infos = sorted(glob.glob(os.path.join(workdir, "itens", "*.info.json")))
     if not infos:
         print(f"ERRO: yt-dlp não gerou .info.json em {workdir}", file=sys.stderr)
         return 1
     with open(infos[0], "r", encoding="utf-8") as fh:
         info = json.load(fh)
+
+    fonte = source_of(url) or ("instagram" if (info.get("extractor_key") or "").lower().startswith("instagram")
+                               else "youtube")
 
     prefer = cfg.get("subLangs", ["pt", "en"])
     sub_file, sub_lang = pick_subtitle(workdir, prefer)
@@ -401,7 +543,12 @@ def ingest(cfg: dict, workdir: str, url: str) -> int:
 
     vid = info.get("id") or video_id(url) or "video"
     frames_section = install_frames(cfg, workdir, vid)
-    note_name, content = build_note(info, transcript, sub_lang, cfg, frames_section)
+    if fonte == "instagram":
+        kind = "imagens" if (os.path.isfile(os.path.join(workdir, "frames", "labels.txt"))
+                             or not info.get("duration")) else "video"
+        note_name, content = build_note_instagram(info, transcript, sub_lang, cfg, frames_section, kind)
+    else:
+        note_name, content = build_note(info, transcript, sub_lang, cfg, frames_section)
     folder = os.path.join(cfg["vaultDir"], cfg.get("subdir", "YouTube"))
     os.makedirs(folder, exist_ok=True)
     atomic_write(os.path.join(folder, f"{note_name}.md"), content)
@@ -413,6 +560,7 @@ def ingest(cfg: dict, workdir: str, url: str) -> int:
         "importado": datetime.now().strftime("%Y-%m-%d %H:%M"),
         "legenda": sub_lang or "nenhuma",
         "frames": frames_section.count("![["),
+        "fonte": fonte,
     }
     save_state(cfg, state)
     mark_queue_done(cfg, url, note_name)

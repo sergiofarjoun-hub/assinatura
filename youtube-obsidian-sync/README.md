@@ -1,7 +1,7 @@
 # YouTube → Obsidian Sync
 
-Transforma vídeos do YouTube em notas Markdown no vault **BASE_CONHECIMENTO**: você cola
-a URL numa nota de fila, e de hora em hora o sync baixa metadados + legenda e cria a nota
+Transforma vídeos do YouTube — e, desde 18/10/2026, **posts e reels do Instagram** — em notas
+Markdown no vault **BASE_CONHECIMENTO**: você cola a URL numa nota de fila, e de hora em hora o sync baixa metadados + legenda e cria a nota
 com a **transcrição em texto** e, opcionalmente, **frames do vídeo** em `YouTube/`. Nada de
 assistir de novo para achar aquele trecho — e o conteúdo passa a estar disponível para
 busca, para links do Obsidian e para o Claude ler.
@@ -51,6 +51,30 @@ Você cola a URL em <vault>/YouTube/_fila.md
   três frames do mesmo slide parado. Vídeo de plano único (talking head) rende quase
   nenhuma cena: abaixo de `sceneMinFrames`, cai automaticamente para intervalo fixo.
 - **Lock** em `~/.yt-obsidian-sync/sync.lock` impede execuções sobrepostas (stale após 30min).
+
+## Instagram (post, carrossel ou reel)
+
+A mesma fila aceita `instagram.com/p/<código>/`, `/reel/`, `/reels/` e `/tv/` (com ou sem o
+usuário na frente; `?img_index=…` e outros parâmetros são ignorados). O código do post tem 11
+caracteres, como o id do YouTube — o nome da nota, o estado e o `youtube-nota` do Hamsa OS
+servem aos dois.
+
+- **Post de imagens (um ou carrossel):** o Instagram não tem legenda; o texto do autor vai para
+  `## Descrição`. O yt-dlp não baixa imagem como vídeo, mas com `--ignore-no-formats-error
+  --write-thumbnail` entrega a imagem inteira de cada item (HEIC, às vezes JPG/WEBP). Cada uma
+  vira um "frame" rotulado `**[slide N/T]**`, **independente de `framesEvery`** (os slides são o
+  conteúdo). Conversão HEIC→JPG pelo `sips` do macOS (ffmpeg de reserva), maior lado em
+  `slidesMaxSize` px (padrão 1440). Nome do arquivo: `<id>-NNN-SSSSS.jpg`, com SSSSS = número
+  do slide. A Transcrição traz a frase `_Post de imagens, sem áudio…_`.
+- **Reel (ou post de um vídeo só):** baixa o vídeo e corta frames como no YouTube; sem legenda
+  (vale `whisperCmd`, se configurado).
+- **Limite conhecido:** carrossel com um item de vídeo fica só com a capa desse item.
+- Frontmatter: `instagram_id` (em vez de `youtube_id`), `fonte: "instagram"`, `tipo: "imagens"`
+  ou `"video"`, `canal` (nome), `perfil` (`@usuário`); tag `instagram`. Título = primeira linha
+  do texto do post (até 70 caracteres) ou `Post de @usuário`. Link: `[Ver no Instagram](…)`.
+- Conta no sistema: a importação nasceu do pedido do Sergio em 18/10/2026 ("quero que a
+  rotina também consiga importar links do Instagram"); detalhe e ensaio na memória
+  `youtube_conhecimento_fila_e_resumo`.
 
 ## Formato da nota
 
@@ -176,6 +200,7 @@ O plist mudou (reinstalação)? O `kickstart` não relê o arquivo: descarregue 
 | `frameMinGap` | descarta frame a menos de N segundos do anterior (1 padrão; o instalador não grava esta chave — acrescente à mão se quiser outro valor) |
 | `framesMax` | teto de frames por vídeo (padrão 60) — evita nota gigante em vídeo longo |
 | `framesMaxHeight` | altura máxima do frame e do download (padrão 720) |
+| `slidesMaxSize` | maior lado, em px, de cada slide de post do Instagram (padrão 1440; o instalador não grava esta chave) |
 | `extraTags` | tags extras no frontmatter de toda nota |
 
 ### Vídeo sem legenda
