@@ -195,6 +195,7 @@ O plist mudou (reinstalação)? O `kickstart` não relê o arquivo: descarregue 
 | `ytdlpBin` | caminho absoluto do `yt-dlp` (o instalador grava o que achou, ex. `/opt/homebrew/bin/yt-dlp`) — é o que ajustar se o `yt-dlp` mudar de lugar |
 | `cookiesFromBrowser` | `safari`/`chrome`/`firefox` — só para vídeo privado ou com restrição de idade |
 | `whisperCmd` | transcritor local para vídeo sem legenda (ver contrato abaixo) |
+| `whisperModel` | modelo do `whisper_local.py`: `small` (padrão) ou `medium` (mais preciso, ~3× mais lento) |
 | `framesEvery` | liga os frames (`0` desliga, padrão) e define o intervalo **mínimo** do fallback — em vídeo longo ele cresce para `framesMax` frames se espalharem por toda a duração. Precisa de `ffmpeg` |
 | `framesMode` | `scene` (padrão) ou `interval` |
 | `sceneThreshold` | sensibilidade da detecção de cena (0.3 padrão; menor = mais frames) |
@@ -217,8 +218,8 @@ O comando deve deixar um `.srt` ou `.vtt` na pasta de trabalho — o resto do pi
 igual. **Pronto para usar:** `whisper_local.py` (neste repo) — faster-whisper `small` int8 na CPU,
 idioma detectado, nada sai da máquina; ~50 s para 4 min de áudio num MacBook Air. Config:
 `"whisperCmd": "/caminho/do/python3 /Users/<você>/.yt-obsidian-sync/whisper_local.py"` (o python
-que tem o `faster-whisper`; `pip3 install faster-whisper`). `WHISPER_MODEL=medium` no ambiente do
-agente dá mais precisão por ~3× o tempo. Ligado no Mac do Sergio em 18/10/2026 — reel do Instagram
+que tem o `faster-whisper`; `pip3 install faster-whisper`). `"whisperModel": "medium"` no config dá mais
+precisão por ~3× o tempo (padrão `small`). Ligado no Mac do Sergio em 18/10/2026 — reel do Instagram
 passou a entrar com a fala transcrita. Serve para `whisper.cpp`, `faster-whisper` ou qualquer wrapper seu. Sem `whisperCmd`,
 a nota nasce só com metadados e descrição, marcada como `legenda: "nenhuma"`.
 O valor é separado por espaços e executado **direto, sem shell**: aspas, `$VAR` e `~` ficam

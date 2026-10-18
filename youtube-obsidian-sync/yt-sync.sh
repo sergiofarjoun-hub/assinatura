@@ -23,6 +23,7 @@ SLEEP_SUBTITLES=6   # pausa (s) antes de cada legenda: sem ela o YouTube devolve
 YTDLP="$(py ".get('ytdlpBin','yt-dlp')")"
 COOKIES_BROWSER="$(py ".get('cookiesFromBrowser','')")"
 WHISPER_CMD="$(py ".get('whisperCmd','')")"
+WHISPER_MODEL_CFG="$(py ".get('whisperModel','')")"   # small (padrão do whisper_local.py) | medium (mais preciso, ~3× mais lento)
 FRAMES_EVERY="$(py ".get('framesEvery',0)")"
 FRAMES_MAX="$(py ".get('framesMax',60)")"
 FRAMES_HEIGHT="$(py ".get('framesMaxHeight',720)")"
@@ -86,7 +87,7 @@ transcrever_local() {
     if "$YTDLP" -x --audio-format mp3 --no-playlist --no-progress \
          -o "$WORK/%(id)s.%(ext)s" "$URL" >>"$WORK/yt-dlp.log" 2>&1; then
       AUDIO="$(ls "$WORK"/*.mp3 2>/dev/null | head -1 || true)"
-      [ -n "$AUDIO" ] && { $WHISPER_CMD "$AUDIO" "$WORK" >>"$WORK/whisper.log" 2>&1 \
+      [ -n "$AUDIO" ] && { WHISPER_MODEL="${WHISPER_MODEL_CFG:-${WHISPER_MODEL:-small}}" $WHISPER_CMD "$AUDIO" "$WORK" >>"$WORK/whisper.log" 2>&1 \
         || echo "$LOG_PREFIX AVISO: whisperCmd falhou — veja $WORK/whisper.log"; }
     fi
   fi
