@@ -214,7 +214,12 @@ Se `whisperCmd` estiver configurado, o sync baixa o áudio em MP3 e chama:
 ```
 
 O comando deve deixar um `.srt` ou `.vtt` na pasta de trabalho — o resto do pipeline segue
-igual. Serve para `whisper.cpp`, `faster-whisper` ou qualquer wrapper seu. Sem `whisperCmd`,
+igual. **Pronto para usar:** `whisper_local.py` (neste repo) — faster-whisper `small` int8 na CPU,
+idioma detectado, nada sai da máquina; ~50 s para 4 min de áudio num MacBook Air. Config:
+`"whisperCmd": "/caminho/do/python3 /Users/<você>/.yt-obsidian-sync/whisper_local.py"` (o python
+que tem o `faster-whisper`; `pip3 install faster-whisper`). `WHISPER_MODEL=medium` no ambiente do
+agente dá mais precisão por ~3× o tempo. Ligado no Mac do Sergio em 18/10/2026 — reel do Instagram
+passou a entrar com a fala transcrita. Serve para `whisper.cpp`, `faster-whisper` ou qualquer wrapper seu. Sem `whisperCmd`,
 a nota nasce só com metadados e descrição, marcada como `legenda: "nenhuma"`.
 O valor é separado por espaços e executado **direto, sem shell**: aspas, `$VAR` e `~` ficam
 literais — use caminhos absolutos ou aponte para um script seu.
