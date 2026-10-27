@@ -121,7 +121,7 @@ def email(ctx):
         "",
         "   - O que fazer em uma emergência médica durante a viagem",
         *extras,
-        "   - Como pedir reembolso sem dor de cabeça",
+        "   - Como a HAMSA cuida do seu reembolso, sem dor de cabeça",
         "   - Os contatos de emergência do seguro viagem (diferentes dos do seguro saúde)",
         "",
         "Nos próximos dias, a VUMI também envia o Kit de Boas-Vindas (certificado e carteirinha)"
