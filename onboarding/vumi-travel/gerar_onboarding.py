@@ -27,6 +27,13 @@ MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "
 LIMITE_PADRAO, LIMITE_70 = "US$ 5.000.000", "US$ 500.000"
 CANCELAMENTO = {"simples": "2.500", "anual": "1.500"}
 PARTICULAS = {"da", "das", "de", "do", "dos", "e"}
+# país de residência -> (preposição "de", preposição "em"); padrão Brasil
+PAISES = {
+    "Brasil": ("do Brasil", "no Brasil"),
+    "Portugal": ("de Portugal", "em Portugal"),
+    "Emirados Árabes Unidos": ("dos Emirados Árabes Unidos", "nos Emirados Árabes Unidos"),
+    "Estados Unidos": ("dos Estados Unidos", "nos Estados Unidos"),
+}
 
 
 def nome_proprio(nome):
@@ -69,6 +76,8 @@ def contexto(c):
     com_70 = [nome_proprio(s["nome"].split()[0]) for s in segurados if s["idade"] is not None and s["idade"] >= 70]
     todos_70 = bool(com_70) and len(com_70) == len(segurados)
     op = c.get("opcionais", {})
+    pais = c.get("pais_residencia", "Brasil")
+    pais_de, pais_em = PAISES.get(pais, (f"de {pais}", f"em {pais}"))
     plano_txt = (f"Anual · até {c['dias_por_viagem']} dias por viagem" if c["plano"] == "anual"
                  else "Viagem simples")
     return {
@@ -87,6 +96,8 @@ def contexto(c):
         "op_nao_medicos": bool(op.get("nao_medicos")),
         "op_cancelamento": bool(op.get("cancelamento")),
         "cancelamento_limite": CANCELAMENTO[c["plano"]],
+        "pais_de": pais_de,
+        "pais_em": pais_em,
         # numeração dos "passo a passo": 1 emergência, depois só as páginas que existem
         "n_cancelamento": 2 + bool(op.get("nao_medicos")),
         "n_reembolso": 2 + bool(op.get("nao_medicos")) + bool(op.get("cancelamento")),
@@ -121,6 +132,17 @@ def email(ctx):
     return assunto, corpo
 
 
+# Fontes estáticas locais: com web fonts variáveis o Chromium embute dezenas de
+# fontes Type 3 e o PDF passa de 700 KB (pesado para anexo de e-mail).
+FONTES = "\n".join(
+    f"@font-face{{font-family:'{fam}';font-weight:{peso};src:url('{(AQUI / 'fonts' / arq).as_uri()}') format('truetype');}}"
+    for fam, peso, arq in [("Inter", 400, "Inter-Regular.ttf"), ("Inter", 500, "Inter-SemiBold.ttf"),
+                           ("Inter", 600, "Inter-SemiBold.ttf"), ("Inter", 700, "Inter-Bold.ttf"),
+                           ("Playfair Display", 600, "PlayfairDisplay-Bold.ttf"),
+                           ("Playfair Display", 700, "PlayfairDisplay-Bold.ttf")])
+LOGO = "data:image/jpeg;base64," + base64.b64encode((AQUI / "hamsa-simbolo-navy.jpg").read_bytes()).decode()
+
+
 def eh_travel(apolice):
     """Apólices VUMI Travel VIP começam com 7150 (as de saúde VUMI, com 8000)."""
     return re.sub(r"\D", "", str(apolice)).startswith("7150")
@@ -136,11 +158,10 @@ def gerar(cliente, saida, pdf=True):
     saida = Path(saida)
     saida.mkdir(parents=True, exist_ok=True)
     env = Environment(loader=FileSystemLoader(AQUI), undefined=StrictUndefined, autoescape=True)
-    logo = "data:image/png;base64," + base64.b64encode((AQUI / "hamsa-simbolo-360.png").read_bytes()).decode()
     ctx = contexto(dict(cliente))
     base = saida / f"Onboarding_VUMI_Travel_VIP_{slug(ctx['titular'])}"
     html = base.with_suffix(".html")
-    html.write_text(env.get_template("template.html.j2").render(c=ctx, logo=logo), encoding="utf-8")
+    html.write_text(env.get_template("template.html.j2").render(c=ctx, logo=LOGO, fontes=FONTES), encoding="utf-8")
     assunto, corpo = email(ctx)
     base.with_suffix(".email.txt").write_text(f"Assunto: {assunto}\n\n{corpo}\n", encoding="utf-8")
     arquivo_pdf = base.with_suffix(".pdf")

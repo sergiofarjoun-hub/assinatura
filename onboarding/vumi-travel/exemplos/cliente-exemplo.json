@@ -55,6 +55,7 @@
     "opcionais": {
       "nao_medicos": false,
       "cancelamento": true
-    }
+    },
+    "pais_residencia": "Portugal"
   }
 ]

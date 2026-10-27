@@ -39,6 +39,7 @@ python3 gerar_onboarding.py cliente.json            # gera em ./saida/ (ignorado
   "dias_por_viagem": 45,            // só no anual: 30 | 45 | 90
   "vigencia_inicio": "2026-11-01",
   "vigencia_fim": "2027-10-31",
+  "pais_residencia": "Brasil",      // opcional; padrão Brasil (o seguro não cobre nada nele)
   "segurados": [{"nome": "Maria Exemplo da Silva", "nascimento": "1968-03-14"}],
   "opcionais": {"nao_medicos": true, "cancelamento": false}
 }
@@ -47,7 +48,8 @@ python3 gerar_onboarding.py cliente.json            # gera em ./saida/ (ignorado
 Para cada cliente saem `…pdf` (anexo), `…email.txt` (assunto + corpo) e `…html`.
 O render **falha** se algum conteúdo não couber na página A4, para nunca enviar PDF cortado.
 
-Requisitos: Python 3 + Jinja2, Node + Playwright (Chromium).
+Requisitos: Python 3 + Jinja2, Node + Playwright (Chromium). As fontes ficam em `fonts/` (OFL) para o PDF
+sair com cerca de 100 KB. Com web fonts, o Chromium embute fontes Type 3 e o arquivo passa de 700 KB.
 
 Exemplos gerados em `exemplos/saida/`: Maria (anual, todos os opcionais, um segurado com 72
 anos, 7 págs.), Ana (anual, só cancelamento, 6 págs.) e Pedro (simples, sem opcionais, 5 págs.).

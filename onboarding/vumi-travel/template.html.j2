@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Onboarding VUMI Travel VIP · {{ c.primeiro_nome }}</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>{{ fontes|safe }}</style>
 <style>
   :root{ --navy:#0b1424; --navy-2:#13213a; --gold:#c9a24b; --gold-soft:#f3e9cf; --ink:#1b2333; --muted:#5b6476;
          --paper:#fbf9f4; --line:#e6e0d2; --red:#a23b2a; --red-bg:#fbeee9; --green:#2f6b45; --green-bg:#e8f2ea; }
@@ -84,7 +84,7 @@
   .sos .nums span{ opacity:.85; }
   .sos .nums b{ font-size:12pt; }
   .warn{ display:flex; gap:4mm; align-items:flex-start; background:#fff7e0; border:1.5px solid var(--gold); border-radius:3mm; padding:4mm 5mm; margin-bottom:4mm; }
-  .warn .big{ font-size:20pt; line-height:1; }
+  .warn .big{ flex:none; width:8mm; height:8mm; border-radius:50%; background:var(--gold); color:var(--navy); font:700 14pt/8mm Inter,sans-serif; text-align:center; }
 
   .contact{ display:grid; grid-template-columns:40mm 1fr; gap:1.4mm 4mm; font-size:10pt; margin:0; }
   .contact dt{ color:var(--muted); } .contact dd{ margin:0; font-weight:600; color:var(--navy); }
@@ -127,7 +127,7 @@
   <p class="lead">Ligue para a VUMI® <strong>antes</strong> de ir ao médico, sempre que der. Assim a seguradora indica onde ir e paga direto ao hospital.</p>
 
   <div class="warn">
-    <div class="big">⚠️</div>
+    <div class="big">!</div>
     <div><strong>Use o número do SEGURO VIAGEM.</strong> A central de emergência do Travel VIP é diferente da central do seguro saúde da VUMI. Se você também tem seguro saúde VUMI, não misture os números: em viagem, ligue para os contatos abaixo.</div>
   </div>
 
@@ -137,14 +137,14 @@
       <span>Telefone (qualquer país)</span><b>+1 416 744 3870</b>
       <span>Grátis de dentro dos EUA</span><b>+1 888 809 3493</b>
       <span>E-mail</span><b>emergencytravel@vumigroup.com</b>
-      <span>App</span><b>VUMI® Travel VIP → Notificação médica</b>
+      <span>App</span><b>VUMI® Travel VIP › Notificação médica</b>
     </div>
   </div>
 
   <ol class="steps">
     <li><b>É grave? Vá direto ao pronto-socorro.</b>Em risco de vida, primeiro o atendimento. Quem estiver com você liga para a VUMI® assim que puder.</li>
     <li><b>Não é grave? Ligue ou abra o app.</b>Para febre, dor de garganta ou dúvidas sobre remédio, agende a <strong>telemedicina</strong> pelo app. Se precisar de consulta presencial, a VUMI® indica o melhor lugar.</li>
-    <li><b>Informe estes dados:</b>seu nome e nº da apólice <strong>{{ c.apolice }}</strong> · onde você está · data em que saiu do Brasil · o que aconteceu e quando · doenças e remédios que você já usa.</li>
+    <li><b>Informe estes dados:</b>seu nome e nº da apólice <strong>{{ c.apolice }}</strong> · onde você está · data em que saiu {{ c.pais_de }} · o que aconteceu e quando · doenças e remédios que você já usa.</li>
     <li><b>Peça autorização antes de:</b><strong>internação</strong>, <strong>ambulância ou remoção</strong>, e <strong>exames grandes</strong> (ressonância, tomografia, endoscopia, biópsia). Sem autorização, a VUMI® pode pagar menos ou negar.</li>
     <li><b>Avise a Hamsa no WhatsApp +55 21 98455-5656.</b>A gente acompanha o caso com a seguradora e ajuda você no que precisar.</li>
     <li><b>Teve que pagar? Guarde tudo.</b>Fatura detalhada, comprovante de pagamento, relatório médico e receitas. Com isso, você pede o reembolso (passo a passo {{ c.n_reembolso }}).</li>
@@ -166,7 +166,7 @@
 
   <div class="grid2">
     <div class="card gold">
-      <h3>🧳 Minha mala não chegou</h3>
+      <h3>Minha mala não chegou</h3>
       <ol class="steps">
         <li><b>Antes de sair do aeroporto</b>vá ao balcão da companhia aérea e peça o <strong>PIR</strong> (Property Irregularity Report).</li>
         <li><b>Compre só o essencial</b>(roupa, higiene, remédio) enquanto a mala não chega, e guarde as notas com data.</li>
@@ -175,7 +175,7 @@
       <p class="note">Paga até <strong>US$ 500 por viagem</strong> se a mala atrasar mais de 5 horas no destino. Não vale na volta para casa.</p>
     </div>
     <div class="card gold">
-      <h3>✈️ Meu voo atrasou ou foi cancelado</h3>
+      <h3>Meu voo atrasou ou foi cancelado</h3>
       <ol class="steps">
         <li><b>Peça à companhia aérea</b>uma declaração por escrito do atraso ou do cancelamento.</li>
         <li><b>Aceite a alternativa</b>que a companhia oferecer. Se você recusar, perde o benefício.</li>
@@ -184,7 +184,7 @@
       <p class="note">Paga <strong>US$ 100 por dia (máx. US$ 500)</strong> para atraso de mais de 5 horas, cancelamento ou overbooking.</p>
     </div>
     <div class="card gold">
-      <h3>🔁 Perdi a conexão</h3>
+      <h3>Perdi a conexão</h3>
       <ol class="steps">
         <li><b>Peça a declaração do atraso</b>do primeiro voo à companhia aérea.</li>
         <li><b>Guarde a passagem original</b>e o comprovante da remarcação ou da passagem nova.</li>
@@ -192,7 +192,7 @@
       <p class="note">Paga até <strong>US$ 1.000 por viagem</strong> se o atraso for de 6 horas ou mais. A conexão original precisa ter pelo menos 3 horas e a passagem precisa ter sido comprada com 24 horas de antecedência.</p>
     </div>
     <div class="card gold">
-      <h3>🚨 Fui roubado</h3>
+      <h3>Fui roubado</h3>
       <ol class="steps">
         <li><b>Registre o boletim de ocorrência</b>na polícia local <strong>no mesmo dia</strong>.</li>
         <li><b>Junte os comprovantes</b>de compra dos itens roubados.</li>
@@ -232,7 +232,7 @@
   <div class="card red">
     <strong>Não cobre:</strong> mudança de planos ou de ideia · doença que já existia ou dava sintomas quando a viagem foi comprada · cancelar só um trecho da viagem · valores devolvidos como crédito para uso futuro · multas de hotel, passeios e eventos.
   </div>
-  <p class="note">A cobertura acaba quando você embarca ou passa pela imigração na saída do Brasil.</p>
+  <p class="note">A cobertura acaba quando você embarca ou passa pela imigração na saída {{ c.pais_de }}.</p>
   <div class="foot"><span>Onboarding VUMI® Travel VIP · {{ c.titular }} · Apólice {{ c.apolice }}</span><span></span></div>
 </section>
 {% endif %}
@@ -322,7 +322,7 @@
     <ul class="check">
       <li>Mudou algum remédio ou tratamento nos últimos 6 meses? Avise a Hamsa antes de viajar.</li>
       <li>Esportes radicais (mergulho, esqui, escalada etc.) <strong>não são cobertos</strong>.</li>
-      <li>O seguro <strong>não cobre nada no Brasil</strong>, só fora do país.</li>
+      <li>O seguro <strong>não cobre nada {{ c.pais_em }}</strong> (seu país de residência), só fora dele.</li>
     </ul>
   </div>
   <div class="foot"><span>Onboarding VUMI® Travel VIP · {{ c.titular }} · Apólice {{ c.apolice }}</span><span></span></div>
