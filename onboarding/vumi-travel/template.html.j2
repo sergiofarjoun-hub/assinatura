@@ -25,7 +25,8 @@
   p{ margin:0 0 2.5mm; }
   ul{ margin:0 0 2mm; padding-left:5mm; } li{ margin-bottom:1.2mm; }
   strong{ color:var(--navy); }
-  .foot{ position:absolute; left:17mm; right:17mm; bottom:8mm; display:flex; justify-content:space-between; font-size:8pt; color:var(--muted); border-top:1px solid var(--line); padding-top:2.5mm; }
+  .foot{ position:absolute; left:17mm; right:17mm; bottom:8mm; display:flex; justify-content:space-between; font-size:8pt; color:var(--muted); border-top:1px solid var(--line); padding-top:2.5mm; gap:4mm; }
+  .foot .ig{ white-space:nowrap; } .foot .ig b{ color:var(--navy); }
 
   .card{ background:#fff; border:1px solid var(--line); border-radius:3mm; padding:4mm 5mm; margin-bottom:4mm; }
   .card.gold{ border-left:4px solid var(--gold); }
@@ -64,7 +65,8 @@
   .opt .ic{ width:6mm; height:6mm; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:700; flex:none; }
   .opt.on .ic{ background:var(--gold); color:var(--navy); }
   .opt.off .ic{ border:1px solid #56657f; color:#8f9db3; }
-  .cover .bottom{ background:var(--navy-2); border-top:2px solid var(--gold); padding:7mm 20mm; font-size:9pt; color:#c8d0dd; display:flex; justify-content:space-between; }
+  .cover .bottom{ background:var(--navy-2); border-top:2px solid var(--gold); padding:7mm 16mm; font-size:8.8pt; color:#c8d0dd; display:flex; justify-content:space-between; gap:5mm; }
+  .cover .bottom span{ white-space:nowrap; }
   .cover .bottom b{ color:#fff; }
 
   /* tabela de coberturas */
@@ -114,9 +116,10 @@
     </div>
   </div>
   <div class="bottom">
-    <span><b>Hamsa Group</b> · sua corretora</span>
-    <span>WhatsApp Concierge <b>+55 21 98455-5656</b></span>
+    <span><b>Hamsa Group</b></span>
+    <span>WhatsApp <b>+55 21 98455-5656</b></span>
     <span><b>concierge@hamsa.group</b></span>
+    <span>Instagram <b>@hamsa.insurance</b></span>
   </div>
 </section>
 
@@ -154,7 +157,7 @@
   <div class="card gold"><strong>Segurado(s) com 70 anos ou mais ({{ c.nomes_70 }}):</strong> o limite médico é de US$ 500.000 por pessoa.</div>
   {% endif %}
 
-  <div class="foot"><span>Onboarding VUMI® Travel VIP · {{ c.titular }} · Apólice {{ c.apolice }}</span><span></span></div>
+  <div class="foot"><span>Onboarding VUMI® Travel VIP · {{ c.titular }} · Apólice {{ c.apolice }}</span><span class="ig">Instagram <b>@hamsa.insurance</b></span><span></span></div>
 </section>
 
 {% if c.op_nao_medicos %}
@@ -201,7 +204,7 @@
     </div>
   </div>
   <p class="note">Se a companhia aérea ou outro responsável indenizar você, a VUMI® não paga a mesma despesa de novo.</p>
-  <div class="foot"><span>Onboarding VUMI® Travel VIP · {{ c.titular }} · Apólice {{ c.apolice }}</span><span></span></div>
+  <div class="foot"><span>Onboarding VUMI® Travel VIP · {{ c.titular }} · Apólice {{ c.apolice }}</span><span class="ig">Instagram <b>@hamsa.insurance</b></span><span></span></div>
 </section>
 {% endif %}
 
@@ -233,7 +236,7 @@
     <strong>Não cobre:</strong> mudança de planos ou de ideia · doença que já existia ou dava sintomas quando a viagem foi comprada · cancelar só um trecho da viagem · valores devolvidos como crédito para uso futuro · multas de hotel, passeios e eventos.
   </div>
   <p class="note">A cobertura acaba quando você embarca ou passa pela imigração na saída {{ c.pais_de }}.</p>
-  <div class="foot"><span>Onboarding VUMI® Travel VIP · {{ c.titular }} · Apólice {{ c.apolice }}</span><span></span></div>
+  <div class="foot"><span>Onboarding VUMI® Travel VIP · {{ c.titular }} · Apólice {{ c.apolice }}</span><span class="ig">Instagram <b>@hamsa.insurance</b></span><span></span></div>
 </section>
 {% endif %}
 
@@ -283,7 +286,7 @@
   </div>
   <div class="card navy"><strong>Quer incluir essa cobertura nas próximas viagens?</strong> Ela pode ser adicionada na renovação. Fale com {{ c.comercial_txt }}.</div>
   {% endif %}
-  <div class="foot"><span>Onboarding VUMI® Travel VIP · {{ c.titular }} · Apólice {{ c.apolice }}</span><span></span></div>
+  <div class="foot"><span>Onboarding VUMI® Travel VIP · {{ c.titular }} · Apólice {{ c.apolice }}</span><span class="ig">Instagram <b>@hamsa.insurance</b></span><span></span></div>
 </section>
 
 {# ======================= 4. SEU PLANO + ANTES DE VIAJAR ======================= #}
@@ -326,7 +329,7 @@
       <li>O seguro <strong>não cobre nada {{ c.pais_em }}</strong> (seu país de residência), só fora dele.</li>
     </ul>
   </div>
-  <div class="foot"><span>Onboarding VUMI® Travel VIP · {{ c.titular }} · Apólice {{ c.apolice }}</span><span></span></div>
+  <div class="foot"><span>Onboarding VUMI® Travel VIP · {{ c.titular }} · Apólice {{ c.apolice }}</span><span class="ig">Instagram <b>@hamsa.insurance</b></span><span></span></div>
 </section>
 
 {# ======================= 5. PRIMEIROS PASSOS + CONTATOS ======================= #}
@@ -364,7 +367,7 @@
     <p class="note" style="margin:0"><strong>Não concordou com um reembolso médico?</strong> Envie um recurso para travelappeals@epicamericas.com (resposta em até 30 dias). Para reclamações sobre o atendimento, escreva para travelcomplaints@vumigroup.com. Em qualquer caso, fale primeiro com a Hamsa.</p>
   </div>
   <p class="note">Guia de orientação preparado pela Hamsa Group. Não substitui a apólice: prevalecem as Condições de Cobertura Travel VIP 2026 (a versão em inglês é a que vale juridicamente) e o seu Certificado de Cobertura. VUMI® Group, I.I.: reembolsos administrados pela Epic Health Solutions.</p>
-  <div class="foot"><span>Onboarding VUMI® Travel VIP · {{ c.titular }} · Apólice {{ c.apolice }}</span><span></span></div>
+  <div class="foot"><span>Onboarding VUMI® Travel VIP · {{ c.titular }} · Apólice {{ c.apolice }}</span><span class="ig">Instagram <b>@hamsa.insurance</b></span><span></span></div>
 </section>
 
 </body>
