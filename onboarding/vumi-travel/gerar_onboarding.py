@@ -67,6 +67,15 @@ def validar(c):
         raise ValueError("plano anual exige dias_por_viagem = 30, 45 ou 90")
 
 
+def logo_agente(ag):
+    """Logo do corretor (caminho relativo ao JSON do cliente ou absoluto) como data URI."""
+    if not ag or not ag.get("logo"):
+        return None
+    p = Path(ag["logo"])
+    mime = "image/png" if p.suffix.lower() == ".png" else "image/jpeg"
+    return f"data:{mime};base64," + base64.b64encode(p.read_bytes()).decode()
+
+
 def contexto(c):
     validar(c)
     segurados = c.get("segurados") or [{"nome": c["titular"]}]
@@ -79,7 +88,7 @@ def contexto(c):
     # apólice de agente: assuntos comerciais (renovação, novos opcionais) vão para o agente
     ag = c.get("agente")
     if ag:
-        contato = " ou ".join(x for x in (ag.get("telefone") and f"WhatsApp {ag['telefone']}",
+        contato = " ou ".join(x for x in (ag.get("whatsapp") and f"WhatsApp {ag['whatsapp']}",
                                           ag.get("email") and f"e-mail {ag['email']}") if x)
         empresa = f" ({ag['empresa']})" if ag.get("empresa") else ""
         comercial_txt = f"{ag['nome']}{empresa}" + (f" pelo {contato}" if contato else "")
@@ -106,6 +115,8 @@ def contexto(c):
         "op_cancelamento": bool(op.get("cancelamento")),
         "cancelamento_limite": CANCELAMENTO[c["plano"]],
         "comercial_txt": comercial_txt,
+        "agente": ag,
+        "agente_logo": logo_agente(ag),
         "pais_de": pais_de,
         "pais_em": pais_em,
         # numeração dos "passo a passo": 1 emergência, depois só as páginas que existem
@@ -191,7 +202,11 @@ def main():
     clientes = dados if isinstance(dados, list) else [dados]
 
     erros = 0
+    base_json = Path(a.entrada).resolve().parent
     for c in clientes:
+        ag = c.get("agente") or {}
+        if ag.get("logo") and not Path(ag["logo"]).is_absolute():
+            ag["logo"] = str(base_json / ag["logo"])   # logo relativo ao JSON do cliente
         try:
             r = gerar(c, a.saida, pdf=not a.so_html)
         except (ValueError, subprocess.CalledProcessError) as e:

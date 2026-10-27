@@ -17,6 +17,10 @@ e os opcionais que contratou**, junto com o e-mail "Bem-vindo(a) à VUMI Travel 
 | Seu plano | Tabela de coberturas, com os opcionais **não contratados em cinza**, e checklist "antes de cada viagem" | sempre |
 | Contatos | Primeiros 10 minutos (app, credenciais), contatos de emergência do Travel e da Hamsa | sempre |
 
+Com `agente`, a capa ganha o cartão "Seu corretor" (logo, nome, cargo e contatos), a página de
+contatos ganha o card do corretor e o convite para incluir opcionais na renovação aponta para ele.
+Emergência e reembolso continuam com a Hamsa.
+
 Outras regras de personalização: aviso de limite de US$ 500 mil para segurados com 70 anos
 ou mais (a idade é calculada na data de início da vigência), nomes próprios corrigidos
 ("MARIA DA SILVA" vira "Maria da Silva") e a numeração dos passos e das páginas se ajusta
@@ -40,7 +44,11 @@ python3 gerar_onboarding.py cliente.json            # gera em ./saida/ (ignorado
   "vigencia_inicio": "2026-11-01",
   "vigencia_fim": "2027-10-31",
   "pais_residencia": "Brasil",      // opcional; padrão Brasil (o seguro não cobre nada nele)
-  "agente": {"nome": "…", "empresa": "…", "email": "…", "telefone": "…"},  // opcional: apólice de agente
+  "agente": {                       // opcional: apólice de agente (corretor parceiro)
+    "nome": "…", "cargo": "…", "empresa": "…", "whatsapp": "…", "celular": "…",
+    "telefone": "…", "email": "…", "site": "…",
+    "logo": "agentes/<agente>.jpg"  // relativo ao JSON; guarde em saida/agentes/ (fora do git)
+  },
   "segurados": [{"nome": "Maria Exemplo da Silva", "nascimento": "1968-03-14"}],
   "opcionais": {"nao_medicos": true, "cancelamento": false}
 }

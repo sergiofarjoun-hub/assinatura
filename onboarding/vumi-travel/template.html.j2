@@ -65,6 +65,20 @@
   .opt .ic{ width:6mm; height:6mm; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:700; flex:none; }
   .opt.on .ic{ background:var(--gold); color:var(--navy); }
   .opt.off .ic{ border:1px solid #56657f; color:#8f9db3; }
+  .com-corretor .top{ padding-top:13mm; }
+  .com-corretor .top > img{ width:20mm; margin-bottom:6mm; }
+  .com-corretor h1{ font-size:28pt; margin-bottom:4mm; }
+  .com-corretor .sub{ font-size:11pt; margin-bottom:6mm; }
+  .com-corretor .facts{ padding-top:5mm; gap:4mm 8mm; }
+  .com-corretor .opts{ margin-top:5mm; }
+  .com-corretor .opt{ padding:2mm 4mm; margin-bottom:1.6mm; }
+  .broker{ display:flex; align-items:center; gap:6mm; background:#fff; color:var(--ink); border-radius:3mm; padding:4mm 6mm; margin-top:6mm; max-width:170mm; border-left:4px solid var(--gold); }
+  .broker img, .cover .broker img{ width:30mm; height:auto; margin:0; flex:none; }
+  .broker .tag{ margin:0 0 1mm; }
+  .broker .nm{ font-family:"Playfair Display",Georgia,serif; font-size:14pt; font-weight:700; color:var(--navy); line-height:1.2; }
+  .broker .rl{ color:var(--muted); font-size:9pt; margin-bottom:1.5mm; }
+  .broker .ct{ font-size:9pt; line-height:1.55; }
+  .broker .ct b{ color:var(--navy); }
   .cover .bottom{ background:var(--navy-2); border-top:2px solid var(--gold); padding:7mm 16mm; font-size:8.8pt; color:#c8d0dd; display:flex; justify-content:space-between; gap:5mm; }
   .cover .bottom span{ white-space:nowrap; }
   .cover .bottom b{ color:#fff; }
@@ -96,7 +110,7 @@
 <body>
 
 {# ======================= CAPA ======================= #}
-<section class="page cover">
+<section class="page cover{{ ' com-corretor' if c.agente else '' }}">
   <div class="top">
     <img src="{{ logo }}" alt="Hamsa Group">
     <div class="tag">Onboarding · Seguro Viagem</div>
@@ -114,6 +128,20 @@
       <div class="opt {{ 'on' if c.op_nao_medicos else 'off' }}"><span class="ic">{{ '✓' if c.op_nao_medicos else '–' }}</span><span><b>Imprevistos de viagem</b> (mala, voo, conexão, roubo, responsabilidade civil): {{ 'contratado' if c.op_nao_medicos else 'não contratado' }}</span></div>
       <div class="opt {{ 'on' if c.op_cancelamento else 'off' }}"><span class="ic">{{ '✓' if c.op_cancelamento else '–' }}</span><span><b>Cancelamento de viagem</b>: {{ 'contratado' if c.op_cancelamento else 'não contratado' }}</span></div>
     </div>
+    {% if c.agente %}
+    <div class="broker">
+      {% if c.agente_logo %}<img src="{{ c.agente_logo }}" alt="{{ c.agente.empresa }}">{% endif %}
+      <div>
+        <div class="tag">Seu corretor</div>
+        <div class="nm">{{ c.agente.nome }}</div>
+        <div class="rl">{{ [c.agente.cargo, c.agente.empresa]|select|join(' · ') }}</div>
+        <div class="ct">
+          {% if c.agente.whatsapp %}WhatsApp <b>{{ c.agente.whatsapp }}</b>{% endif %}{% if c.agente.celular %} · Celular <b>{{ c.agente.celular }}</b>{% endif %}{% if c.agente.telefone %} · Tel. <b>{{ c.agente.telefone }}</b>{% endif %}<br>
+          {{ [c.agente.email, c.agente.site]|select|join(' · ') }}
+        </div>
+      </div>
+    </div>
+    {% endif %}
   </div>
   <div class="bottom">
     <span><b>Hamsa Group</b></span>
@@ -355,6 +383,16 @@
       <dt>Sua apólice</dt><dd>{{ c.apolice }}</dd>
     </dl>
   </div>
+  {% if c.agente %}
+  <div class="card gold">
+    <h3>Seu corretor · {{ c.agente.nome }}{% if c.agente.empresa %} ({{ c.agente.empresa }}){% endif %}</h3>
+    <dl class="contact">
+      {% if c.agente.whatsapp %}<dt>WhatsApp</dt><dd>{{ c.agente.whatsapp }}</dd>{% endif %}
+      {% if c.agente.celular or c.agente.telefone %}<dt>Telefones</dt><dd>{{ [c.agente.celular, c.agente.telefone]|select|join(' · ') }}</dd>{% endif %}
+      {% if c.agente.email %}<dt>E-mail</dt><dd>{{ c.agente.email }}</dd>{% endif %}
+    </dl>
+  </div>
+  {% endif %}
   <div class="card gold">
     <h3>Hamsa Group · seu primeiro telefonema</h3>
     <dl class="contact">
