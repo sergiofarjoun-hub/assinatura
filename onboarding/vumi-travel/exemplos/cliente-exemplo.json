@@ -1,0 +1,60 @@
+[
+  {
+    "titular": "MARIA EXEMPLO DA SILVA",
+    "apolice": "7150000001",
+    "email": "maria@exemplo.com",
+    "plano": "anual",
+    "dias_por_viagem": 45,
+    "vigencia_inicio": "2026-11-01",
+    "vigencia_fim": "2027-10-31",
+    "segurados": [
+      {
+        "nome": "Maria Exemplo da Silva",
+        "nascimento": "1968-03-14"
+      },
+      {
+        "nome": "João Exemplo da Silva",
+        "nascimento": "1954-07-02"
+      }
+    ],
+    "opcionais": {
+      "nao_medicos": true,
+      "cancelamento": true
+    }
+  },
+  {
+    "titular": "PEDRO TESTE SOUZA",
+    "apolice": "7150000002",
+    "plano": "simples",
+    "vigencia_inicio": "2026-12-10",
+    "vigencia_fim": "2027-01-15",
+    "segurados": [
+      {
+        "nome": "Pedro Teste Souza",
+        "nascimento": "1990-01-20"
+      }
+    ],
+    "opcionais": {
+      "nao_medicos": false,
+      "cancelamento": false
+    }
+  },
+  {
+    "titular": "ANA MODELO DOS SANTOS",
+    "apolice": "7150000003",
+    "plano": "anual",
+    "dias_por_viagem": 90,
+    "vigencia_inicio": "2026-11-15",
+    "vigencia_fim": "2027-11-14",
+    "segurados": [
+      {
+        "nome": "Ana Modelo dos Santos",
+        "nascimento": "1979-09-09"
+      }
+    ],
+    "opcionais": {
+      "nao_medicos": false,
+      "cancelamento": true
+    }
+  }
+]

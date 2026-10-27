@@ -1,0 +1,370 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Onboarding VUMI Travel VIP · {{ c.primeiro_nome }}</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{ --navy:#0b1424; --navy-2:#13213a; --gold:#c9a24b; --gold-soft:#f3e9cf; --ink:#1b2333; --muted:#5b6476;
+         --paper:#fbf9f4; --line:#e6e0d2; --red:#a23b2a; --red-bg:#fbeee9; --green:#2f6b45; --green-bg:#e8f2ea; }
+  @page{ size:A4; margin:0; }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; background:#d9d6cf; }
+  body{ counter-reset:pg; font:10.2pt/1.5 Inter,"Helvetica Neue",Arial,sans-serif; color:var(--ink); -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  .page{ width:210mm; height:297mm; margin:12px auto; background:var(--paper); position:relative; padding:16mm 17mm 20mm; overflow:hidden; break-after:page; }
+  .page:last-child{ break-after:auto; }
+  .page{ counter-increment:pg; }
+  .foot span:last-child::after{ content:counter(pg); }
+  @media print{ html,body{ background:none; } .page{ margin:0; } }
+  h1,h2,h3{ font-family:"Playfair Display",Georgia,serif; color:var(--navy); margin:0; }
+  h2{ font-size:20pt; margin-bottom:2mm; }
+  h3{ font-size:12pt; margin:0 0 2mm; }
+  .tag{ font-size:8pt; letter-spacing:.2em; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:2mm; }
+  .lead{ color:var(--muted); font-size:10.8pt; margin:0 0 5mm; }
+  p{ margin:0 0 2.5mm; }
+  ul{ margin:0 0 2mm; padding-left:5mm; } li{ margin-bottom:1.2mm; }
+  strong{ color:var(--navy); }
+  .foot{ position:absolute; left:17mm; right:17mm; bottom:8mm; display:flex; justify-content:space-between; font-size:8pt; color:var(--muted); border-top:1px solid var(--line); padding-top:2.5mm; }
+
+  .card{ background:#fff; border:1px solid var(--line); border-radius:3mm; padding:4mm 5mm; margin-bottom:4mm; }
+  .card.gold{ border-left:4px solid var(--gold); }
+  .card.red{ background:var(--red-bg); border-color:#ecc9bd; border-left:4px solid var(--red); }
+  .card.red strong{ color:var(--red); }
+  .card.navy{ background:var(--navy); color:#e8edf5; border:none; }
+  .card.navy strong,.card.navy h3{ color:#fff; }
+  .card.grey{ background:#f1efe9; color:var(--muted); }
+  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:4mm; }
+
+  /* passo a passo */
+  .steps{ list-style:none; padding:0; margin:0 0 3mm; counter-reset:s; }
+  .steps li{ counter-increment:s; position:relative; padding-left:12mm; margin-bottom:3.2mm; min-height:8mm; }
+  .steps li::before{ content:counter(s); position:absolute; left:0; top:-.5mm; width:8mm; height:8mm; border-radius:50%; background:var(--navy); color:var(--gold); font-weight:700; font-size:10.5pt; display:flex; align-items:center; justify-content:center; }
+  .steps li b{ display:block; color:var(--navy); font-size:10.8pt; }
+  .check{ list-style:none; padding:0; }
+  .check li{ position:relative; padding-left:7mm; }
+  .check li::before{ content:""; position:absolute; left:0; top:1mm; width:3.4mm; height:3.4mm; border:1.5px solid var(--gold); border-radius:.8mm; }
+
+  /* capa */
+  .cover{ background:var(--navy); color:#e8edf5; padding:0; display:flex; flex-direction:column; }
+  .cover .top{ padding:20mm 20mm 0; flex:1; }
+  .cover img{ width:26mm; display:block; margin-bottom:9mm; }
+  .cover .tag{ margin-bottom:4mm; }
+  .cover h1{ color:#fff; font-size:34pt; line-height:1.1; margin-bottom:5mm; }
+  .cover .sub{ font-size:12pt; color:#c8d0dd; max-width:150mm; margin-bottom:9mm; }
+  .facts{ display:grid; grid-template-columns:1fr 1fr; gap:5mm 8mm; border-top:1px solid #2b3a55; padding-top:7mm; max-width:170mm; }
+  .facts label{ display:block; font-size:7.8pt; letter-spacing:.18em; text-transform:uppercase; color:var(--gold); margin-bottom:1mm; }
+  .facts div{ color:#fff; font-weight:600; font-size:11pt; }
+  .facts .wide{ grid-column:1 / -1; }
+  .facts .wide div{ font-weight:500; font-size:10.2pt; }
+  .opts{ margin-top:7mm; max-width:170mm; }
+  .opt{ display:flex; align-items:center; gap:3mm; padding:2.6mm 4mm; border-radius:2mm; margin-bottom:2mm; font-size:10pt; }
+  .opt.on{ background:rgba(201,162,75,.16); color:#fff; }
+  .opt.off{ background:rgba(255,255,255,.05); color:#8f9db3; }
+  .opt .ic{ width:6mm; height:6mm; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:700; flex:none; }
+  .opt.on .ic{ background:var(--gold); color:var(--navy); }
+  .opt.off .ic{ border:1px solid #56657f; color:#8f9db3; }
+  .cover .bottom{ background:var(--navy-2); border-top:2px solid var(--gold); padding:7mm 20mm; font-size:9pt; color:#c8d0dd; display:flex; justify-content:space-between; }
+  .cover .bottom b{ color:#fff; }
+
+  /* tabela de coberturas */
+  table{ width:100%; border-collapse:collapse; font-size:9.4pt; margin-bottom:3mm; }
+  th{ text-align:left; font-size:7.8pt; letter-spacing:.12em; text-transform:uppercase; color:var(--gold); background:var(--navy); padding:1.8mm 3mm; }
+  td{ padding:1.6mm 3mm; border-bottom:1px solid var(--line); background:#fff; vertical-align:top; }
+  td.v{ font-weight:600; color:var(--navy); white-space:nowrap; text-align:right; }
+  tr.grp td{ background:var(--gold-soft); font-weight:700; color:var(--navy); font-size:8.4pt; letter-spacing:.08em; text-transform:uppercase; }
+  tr.off td{ color:#9aa1ad; background:#f6f4ef; }
+  tr.off td.v{ color:#9aa1ad; font-weight:500; }
+  .note{ font-size:8.4pt; color:var(--muted); }
+
+  /* emergência */
+  .sos{ background:var(--red); color:#fff; border-radius:3mm; padding:5mm 6mm; margin-bottom:4mm; }
+  .sos h3{ color:#fff; font-size:13pt; }
+  .sos .nums{ display:grid; grid-template-columns:auto 1fr; gap:1.2mm 6mm; font-size:11pt; margin-top:2mm; }
+  .sos .nums span{ opacity:.85; }
+  .sos .nums b{ font-size:12pt; }
+  .warn{ display:flex; gap:4mm; align-items:flex-start; background:#fff7e0; border:1.5px solid var(--gold); border-radius:3mm; padding:4mm 5mm; margin-bottom:4mm; }
+  .warn .big{ font-size:20pt; line-height:1; }
+
+  .contact{ display:grid; grid-template-columns:40mm 1fr; gap:1.4mm 4mm; font-size:10pt; margin:0; }
+  .contact dt{ color:var(--muted); } .contact dd{ margin:0; font-weight:600; color:var(--navy); }
+  .card.navy .contact dt{ color:#9fb0c8; } .card.navy .contact dd{ color:#fff; }
+</style>
+</head>
+<body>
+
+{# ======================= CAPA ======================= #}
+<section class="page cover">
+  <div class="top">
+    <img src="{{ logo }}" alt="Hamsa Group">
+    <div class="tag">Onboarding · Seguro Viagem</div>
+    <h1>Olá, {{ c.primeiro_nome }}!<br>Seu VUMI® Travel VIP<br>está ativo.</h1>
+    <p class="sub">Este guia foi feito para a <strong style="color:#fff">sua</strong> apólice. Em poucas páginas, você vai saber exatamente o que fazer se ficar doente, se a mala não chegar ou se o voo atrasar.</p>
+    <div class="facts">
+      <div><label>Apólice</label><div>{{ c.apolice }}</div></div>
+      <div><label>Plano</label><div>{{ c.plano_txt }}</div></div>
+      <div><label>Vigência</label><div>{{ c.vigencia_txt }}</div></div>
+      <div><label>Cobertura médica</label><div>{{ c.limite_txt }}</div></div>
+      <div class="wide"><label>Segurados</label><div>{{ c.segurados_txt }}</div></div>
+    </div>
+    <div class="opts">
+      <div class="opt on"><span class="ic">✓</span><span><b>Cobertura médica e assistência 24 h</b>: incluída</span></div>
+      <div class="opt {{ 'on' if c.op_nao_medicos else 'off' }}"><span class="ic">{{ '✓' if c.op_nao_medicos else '–' }}</span><span><b>Imprevistos de viagem</b> (mala, voo, conexão, roubo, responsabilidade civil): {{ 'contratado' if c.op_nao_medicos else 'não contratado' }}</span></div>
+      <div class="opt {{ 'on' if c.op_cancelamento else 'off' }}"><span class="ic">{{ '✓' if c.op_cancelamento else '–' }}</span><span><b>Cancelamento de viagem</b>: {{ 'contratado' if c.op_cancelamento else 'não contratado' }}</span></div>
+    </div>
+  </div>
+  <div class="bottom">
+    <span><b>Hamsa Group</b> · sua corretora</span>
+    <span>WhatsApp Concierge <b>+55 21 98455-5656</b></span>
+    <span><b>concierge@hamsa.group</b></span>
+  </div>
+</section>
+
+{# ======================= 1. EMERGÊNCIA ======================= #}
+<section class="page">
+  <div class="tag">Passo a passo 1</div>
+  <h2>Fiquei doente ou me machuquei</h2>
+  <p class="lead">Ligue para a VUMI® <strong>antes</strong> de ir ao médico, sempre que der. Assim a seguradora indica onde ir e paga direto ao hospital.</p>
+
+  <div class="warn">
+    <div class="big">⚠️</div>
+    <div><strong>Use o número do SEGURO VIAGEM.</strong> A central de emergência do Travel VIP é diferente da central do seguro saúde da VUMI. Se você também tem seguro saúde VUMI, não misture os números: em viagem, ligue para os contatos abaixo.</div>
+  </div>
+
+  <div class="sos">
+    <h3>Emergência VUMI® Travel VIP · 24 horas</h3>
+    <div class="nums">
+      <span>Telefone (qualquer país)</span><b>+1 416 744 3870</b>
+      <span>Grátis de dentro dos EUA</span><b>+1 888 809 3493</b>
+      <span>E-mail</span><b>emergencytravel@vumigroup.com</b>
+      <span>App</span><b>VUMI® Travel VIP → Notificação médica</b>
+    </div>
+  </div>
+
+  <ol class="steps">
+    <li><b>É grave? Vá direto ao pronto-socorro.</b>Em risco de vida, primeiro o atendimento. Quem estiver com você liga para a VUMI® assim que puder.</li>
+    <li><b>Não é grave? Ligue ou abra o app.</b>Para febre, dor de garganta ou dúvidas sobre remédio, agende a <strong>telemedicina</strong> pelo app. Se precisar de consulta presencial, a VUMI® indica o melhor lugar.</li>
+    <li><b>Informe estes dados:</b>seu nome e nº da apólice <strong>{{ c.apolice }}</strong> · onde você está · data em que saiu do Brasil · o que aconteceu e quando · doenças e remédios que você já usa.</li>
+    <li><b>Peça autorização antes de:</b><strong>internação</strong>, <strong>ambulância ou remoção</strong>, e <strong>exames grandes</strong> (ressonância, tomografia, endoscopia, biópsia). Sem autorização, a VUMI® pode pagar menos ou negar.</li>
+    <li><b>Avise a Hamsa no WhatsApp +55 21 98455-5656.</b>A gente acompanha o caso com a seguradora e ajuda você no que precisar.</li>
+    <li><b>Teve que pagar? Guarde tudo.</b>Fatura detalhada, comprovante de pagamento, relatório médico e receitas. Com isso, você pede o reembolso (passo a passo {{ c.n_reembolso }}).</li>
+  </ol>
+
+  {% if c.algum_70 %}
+  <div class="card gold"><strong>Segurado(s) com 70 anos ou mais ({{ c.nomes_70 }}):</strong> o limite médico é de US$ 500.000 por pessoa.</div>
+  {% endif %}
+
+  <div class="foot"><span>Onboarding VUMI® Travel VIP · {{ c.titular }} · Apólice {{ c.apolice }}</span><span></span></div>
+</section>
+
+{% if c.op_nao_medicos %}
+{# ======================= 2. IMPREVISTOS ======================= #}
+<section class="page">
+  <div class="tag">Passo a passo 2</div>
+  <h2>Mala, voo, conexão ou roubo</h2>
+  <p class="lead">Você contratou a cobertura de <strong>imprevistos de viagem</strong>. O segredo é sempre o mesmo: <strong>pegar o documento na hora</strong>, ainda no aeroporto ou na delegacia.</p>
+
+  <div class="grid2">
+    <div class="card gold">
+      <h3>🧳 Minha mala não chegou</h3>
+      <ol class="steps">
+        <li><b>Antes de sair do aeroporto</b>vá ao balcão da companhia aérea e peça o <strong>PIR</strong> (Property Irregularity Report).</li>
+        <li><b>Compre só o essencial</b>(roupa, higiene, remédio) enquanto a mala não chega, e guarde as notas com data.</li>
+        <li><b>Guarde o comprovante da entrega</b>com a data e a hora em que a mala chegou.</li>
+      </ol>
+      <p class="note">Paga até <strong>US$ 500 por viagem</strong> se a mala atrasar mais de 5 horas no destino. Não vale na volta para casa.</p>
+    </div>
+    <div class="card gold">
+      <h3>✈️ Meu voo atrasou ou foi cancelado</h3>
+      <ol class="steps">
+        <li><b>Peça à companhia aérea</b>uma declaração por escrito do atraso ou do cancelamento.</li>
+        <li><b>Aceite a alternativa</b>que a companhia oferecer. Se você recusar, perde o benefício.</li>
+        <li><b>Guarde as notas</b>de hotel e refeições.</li>
+      </ol>
+      <p class="note">Paga <strong>US$ 100 por dia (máx. US$ 500)</strong> para atraso de mais de 5 horas, cancelamento ou overbooking.</p>
+    </div>
+    <div class="card gold">
+      <h3>🔁 Perdi a conexão</h3>
+      <ol class="steps">
+        <li><b>Peça a declaração do atraso</b>do primeiro voo à companhia aérea.</li>
+        <li><b>Guarde a passagem original</b>e o comprovante da remarcação ou da passagem nova.</li>
+      </ol>
+      <p class="note">Paga até <strong>US$ 1.000 por viagem</strong> se o atraso for de 6 horas ou mais. A conexão original precisa ter pelo menos 3 horas e a passagem precisa ter sido comprada com 24 horas de antecedência.</p>
+    </div>
+    <div class="card gold">
+      <h3>🚨 Fui roubado</h3>
+      <ol class="steps">
+        <li><b>Registre o boletim de ocorrência</b>na polícia local <strong>no mesmo dia</strong>.</li>
+        <li><b>Junte os comprovantes</b>de compra dos itens roubados.</li>
+      </ol>
+      <p class="note">Paga até <strong>US$ 2.000 por viagem</strong> (passaporte e dinheiro: até US$ 200). Furto sem violência e objetos deixados sem supervisão não são cobertos. O pagamento sai 1 mês após o registro.</p>
+    </div>
+  </div>
+  <p class="note">Se a companhia aérea ou outro responsável indenizar você, a VUMI® não paga a mesma despesa de novo.</p>
+  <div class="foot"><span>Onboarding VUMI® Travel VIP · {{ c.titular }} · Apólice {{ c.apolice }}</span><span></span></div>
+</section>
+{% endif %}
+
+{% if c.op_cancelamento %}
+{# ======================= 3. CANCELAMENTO (só se contratado) ======================= #}
+<section class="page">
+  <div class="tag">Passo a passo {{ c.n_cancelamento }}</div>
+  <h2>Precisei cancelar a viagem</h2>
+  <p class="lead">Você contratou a cobertura de <strong>cancelamento</strong>: até <strong>US$ {{ c.cancelamento_limite }} por pessoa, por viagem</strong>, para o valor que você pagou e não consegue recuperar.</p>
+
+  <div class="card gold">
+    <h3>Quando vale</h3>
+    <ul>
+      <li>Você ou um <strong>parente próximo</strong> ficou gravemente doente ou se acidentou (com internação), ou faleceu.</li>
+      <li>Um médico declarou que você <strong>não pode viajar</strong>.</li>
+      <li>A segurada grávida não pode tomar uma vacina exigida no destino.</li>
+      <li>As autoridades passaram a <strong>desaconselhar viagens</strong> ao destino depois que você comprou o seguro.</li>
+    </ul>
+  </div>
+
+  <ol class="steps">
+    <li><b>Cancele com a agência ou a companhia aérea assim que souber</b>e sempre <strong>antes do horário do embarque</strong>. Depois do embarque não há cobertura.</li>
+    <li><b>Peça o extrato do que não será devolvido</b>(multas e valores retidos).</li>
+    <li><b>Junte o comprovante do motivo</b>(atestado ou relatório médico, certidão de óbito ou o aviso oficial das autoridades).</li>
+    <li><b>Mande para a Hamsa revisar</b>e siga o passo a passo do reembolso (próxima página).</li>
+  </ol>
+
+  <div class="card red">
+    <strong>Não cobre:</strong> mudança de planos ou de ideia · doença que já existia ou dava sintomas quando a viagem foi comprada · cancelar só um trecho da viagem · valores devolvidos como crédito para uso futuro · multas de hotel, passeios e eventos.
+  </div>
+  <p class="note">A cobertura acaba quando você embarca ou passa pela imigração na saída do Brasil.</p>
+  <div class="foot"><span>Onboarding VUMI® Travel VIP · {{ c.titular }} · Apólice {{ c.apolice }}</span><span></span></div>
+</section>
+{% endif %}
+
+{# ======================= REEMBOLSO ======================= #}
+<section class="page">
+  <div class="tag">Passo a passo {{ c.n_reembolso }}</div>
+  <h2>Como pedir reembolso</h2>
+  <p class="lead">Pagou alguma despesa coberta? Siga estes passos. <strong>Prazo: até 180 dias</strong> após o atendimento ou o ocorrido.</p>
+  <ol class="steps">
+    <li><b>Separe os documentos</b>(lista abaixo), em fotos legíveis ou PDF.</li>
+    <li><b>Mande tudo para a Hamsa revisar</b>pelo WhatsApp ou para concierge@hamsa.group. A gente confere o formulário antes do envio para evitar idas e vindas.</li>
+    <li><b>Envie pelo app VUMI® Travel VIP</b>(“Solicitar reembolso”) ou pelo portal www.myvumiportal.com.</li>
+    <li><b>Responda rápido</b>se a VUMI® pedir mais algum documento: você tem 90 dias.</li>
+  </ol>
+
+  <div class="grid2">
+    <div class="card">
+      <h3>Sempre</h3>
+      <ul class="check">
+        <li>Formulário de reembolso assinado (um por pessoa e por evento)</li>
+        <li>Fatura detalhada e comprovante de pagamento</li>
+        <li>Cartão de embarque ou passagem (prova de que estava viajando)</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Conforme o caso</h3>
+      <ul class="check">
+        <li><strong>Médico:</strong> relatório médico e receitas</li>
+        {% if c.op_nao_medicos %}<li><strong>Mala:</strong> PIR e comprovante da entrega</li>
+        <li><strong>Voo ou conexão:</strong> declaração da companhia aérea</li>
+        <li><strong>Roubo:</strong> boletim de ocorrência</li>{% endif %}
+        {% if c.op_cancelamento %}<li><strong>Cancelamento:</strong> atestado ou comprovante do motivo e extrato das multas</li>{% endif %}
+        <li><strong>Outro seguro pagou parte?</strong> O demonstrativo dele</li>
+      </ul>
+    </div>
+  </div>
+  {% if not c.op_nao_medicos %}
+  <div class="tag" style="margin-top:3mm">E se a mala ou o voo der problema?</div>
+  <p>Na sua apólice, a cobertura de <strong>imprevistos de viagem</strong> (mala, voo, conexão e roubo) <strong>não foi contratada</strong>. Mesmo assim, você tem direitos garantidos pela companhia aérea. Veja o que fazer:</p>
+  <div class="card grey">
+    <ul>
+      <li><strong>Mala atrasada ou extraviada:</strong> abra o <strong>PIR</strong> no balcão da companhia aérea antes de sair do aeroporto e peça o reembolso das compras essenciais diretamente a ela.</li>
+      <li><strong>Voo atrasado ou cancelado:</strong> a companhia aérea é obrigada a dar assistência (alimentação, hotel, remarcação). Peça tudo por escrito.</li>
+      <li><strong>Roubo:</strong> registre o boletim de ocorrência na polícia local no mesmo dia.</li>
+    </ul>
+  </div>
+  <div class="card navy"><strong>Quer incluir essa cobertura nas próximas viagens?</strong> Ela pode ser adicionada na renovação. Fale com a Hamsa pelo WhatsApp +55 21 98455-5656.</div>
+  {% endif %}
+  <div class="foot"><span>Onboarding VUMI® Travel VIP · {{ c.titular }} · Apólice {{ c.apolice }}</span><span></span></div>
+</section>
+
+{# ======================= 4. SEU PLANO + ANTES DE VIAJAR ======================= #}
+<section class="page">
+  <div class="tag">Seu plano</div>
+  <h2>O que a sua apólice cobre</h2>
+  <p class="lead">Valores em dólares, por pessoa. Itens em cinza não fazem parte da sua apólice.</p>
+  <table>
+    <tr><th>Cobertura</th><th style="text-align:right">Limite</th></tr>
+    <tr class="grp"><td colspan="2">Médica (incluída)</td></tr>
+    <tr><td>Limite total por pessoa</td><td class="v">{{ c.limite_txt }}</td></tr>
+    <tr><td>Consultas, internação, cirurgia, exames e remédios por doença ou acidente inesperado</td><td class="v">100%*</td></tr>
+    <tr><td>Doença pré-existente estável há 6 meses</td><td class="v">US$ 500.000</td></tr>
+    <tr><td>Dentista de emergência · fisioterapia</td><td class="v">US$ 500 · US$ 2.500</td></tr>
+    <tr><td>Ambulância, remoção aérea e repatriação</td><td class="v">100%*</td></tr>
+    <tr><td>Hotel após doença ou acidente grave</td><td class="v">US$ 300/dia (até US$ 6.000)</td></tr>
+    <tr><td>Passagem para um familiar visitar · retorno antecipado</td><td class="v">US$ 3.000 cada</td></tr>
+    <tr class="grp {{ '' if c.op_nao_medicos else 'off' }}"><td colspan="2">Imprevistos de viagem · {{ 'contratado' if c.op_nao_medicos else 'não contratado' }}</td></tr>
+    <tr class="{{ '' if c.op_nao_medicos else 'off' }}"><td>Mala atrasada (mais de 5 h)</td><td class="v">US$ 500</td></tr>
+    <tr class="{{ '' if c.op_nao_medicos else 'off' }}"><td>Voo atrasado (mais de 5 h) ou cancelado</td><td class="v">US$ 100/dia (até US$ 500)</td></tr>
+    <tr class="{{ '' if c.op_nao_medicos else 'off' }}"><td>Perda de conexão (6 h ou mais)</td><td class="v">US$ 1.000</td></tr>
+    <tr class="{{ '' if c.op_nao_medicos else 'off' }}"><td>Roubo de bagagem e objetos pessoais</td><td class="v">US$ 2.000</td></tr>
+    <tr class="{{ '' if c.op_nao_medicos else 'off' }}"><td>Morte ou invalidez por acidente · responsabilidade civil</td><td class="v">US$ 100.000</td></tr>
+    <tr class="{{ '' if c.op_nao_medicos else 'off' }}"><td>Assistência jurídica</td><td class="v">US$ 10.000</td></tr>
+    <tr class="grp {{ '' if c.op_cancelamento else 'off' }}"><td colspan="2">Cancelamento de viagem · {{ 'contratado' if c.op_cancelamento else 'não contratado' }}</td></tr>
+    <tr class="{{ '' if c.op_cancelamento else 'off' }}"><td>Valor pago e não reembolsável da viagem</td><td class="v">US$ {{ c.cancelamento_limite }} por viagem</td></tr>
+  </table>
+  <p class="note">* Até o valor usual e razoável da região (UCR). Resumo das Condições de Cobertura Travel VIP 2026: o documento oficial e o seu Certificado de Cobertura prevalecem.</p>
+
+  <div class="tag" style="margin-top:4mm">Antes de cada viagem</div>
+  <div class="grid2">
+    <ul class="check">
+      {% if c.plano == 'anual' %}<li>A viagem dura <strong>até {{ c.dias_por_viagem }} dias</strong>? Se for mais longa, compre uma extensão <strong>antes de embarcar</strong>.</li>{% else %}<li>Vai ficar mais tempo? Prorrogue <strong>antes de {{ c.fim_txt }}</strong>. A prorrogação vale 3 dias depois da compra.</li>{% endif %}
+      <li>Carteirinha salva no celular e impressa.</li>
+      <li>App Travel VIP instalado e com login feito.</li>
+    </ul>
+    <ul class="check">
+      <li>Mudou algum remédio ou tratamento nos últimos 6 meses? Avise a Hamsa antes de viajar.</li>
+      <li>Esportes radicais (mergulho, esqui, escalada etc.) <strong>não são cobertos</strong>.</li>
+      <li>O seguro <strong>não cobre nada no Brasil</strong>, só fora do país.</li>
+    </ul>
+  </div>
+  <div class="foot"><span>Onboarding VUMI® Travel VIP · {{ c.titular }} · Apólice {{ c.apolice }}</span><span></span></div>
+</section>
+
+{# ======================= 5. PRIMEIROS PASSOS + CONTATOS ======================= #}
+<section class="page">
+  <div class="tag">Hoje, em 10 minutos</div>
+  <h2>Deixe tudo pronto</h2>
+  <ul class="check" style="margin-bottom:5mm">
+    <li><strong>Procure no seu e-mail</strong> duas mensagens da VUMI®: <em>“Kit de Boas-Vindas”</em> (certificado e carteirinha) e <em>“Credenciais de Boas-Vindas”</em> (login e senha).</li>
+    <li><strong>Baixe o app VUMI® Travel VIP</strong> (App Store / Google Play) e entre com esse login.</li>
+    <li><strong>Confira o certificado</strong>: nomes, datas e opcionais. Achou erro? Avise a Hamsa.</li>
+    <li><strong>Salve na agenda</strong> o contato “VUMI VIAGEM EMERGÊNCIA”: +1 416 744 3870.</li>
+    <li><strong>Salve a Hamsa</strong>: WhatsApp Concierge +55 21 98455-5656.</li>
+    {% if c.segurados|length > 1 %}<li><strong>Compartilhe com {{ c.outros_nomes }}</strong>: cada um deve ter a própria carteirinha no celular.</li>{% endif %}
+  </ul>
+
+  <div class="card navy">
+    <h3>Contatos · recorte ou tire um print</h3>
+    <dl class="contact">
+      <dt>Emergência viagem 24 h</dt><dd>+1 416 744 3870 · grátis nos EUA +1 888 809 3493</dd>
+      <dt>E-mail emergência</dt><dd>emergencytravel@vumigroup.com</dd>
+      <dt>Apólice e cancelamento</dt><dd>travelvip@vumigroup.com</dd>
+      <dt>Portal</dt><dd>www.myvumiportal.com</dd>
+      <dt>Sua apólice</dt><dd>{{ c.apolice }}</dd>
+    </dl>
+  </div>
+  <div class="card gold">
+    <h3>Hamsa Group · seu primeiro telefonema</h3>
+    <dl class="contact">
+      <dt>WhatsApp Concierge</dt><dd>+55 21 98455-5656</dd>
+      <dt>Brasil · EUA</dt><dd>+55 21 97918-6565 · +1 310 755-1989</dd>
+      <dt>E-mail</dt><dd>concierge@hamsa.group</dd>
+    </dl>
+  </div>
+  <div class="card grey">
+    <p class="note" style="margin:0"><strong>Não concordou com um reembolso médico?</strong> Envie um recurso para travelappeals@epicamericas.com (resposta em até 30 dias). Para reclamações sobre o atendimento, escreva para travelcomplaints@vumigroup.com. Em qualquer caso, fale primeiro com a Hamsa.</p>
+  </div>
+  <p class="note">Guia de orientação preparado pela Hamsa Group. Não substitui a apólice: prevalecem as Condições de Cobertura Travel VIP 2026 (a versão em inglês é a que vale juridicamente) e o seu Certificado de Cobertura. VUMI® Group, I.I.: reembolsos administrados pela Epic Health Solutions.</p>
+  <div class="foot"><span>Onboarding VUMI® Travel VIP · {{ c.titular }} · Apólice {{ c.apolice }}</span><span></span></div>
+</section>
+
+</body>
+</html>

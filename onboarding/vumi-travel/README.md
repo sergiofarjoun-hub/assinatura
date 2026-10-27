@@ -1,42 +1,68 @@
-# Manual de onboarding — cliente VUMI® Travel VIP
+# Onboarding VUMI® Travel VIP: guia personalizado por cliente
 
-Manual do segurado (9 páginas A4, PT-BR, identidade Hamsa) para enviar junto
-com o Kit de Boas-Vindas da VUMI a todo cliente novo de Travel VIP.
+Segue a mesma rotina do onboarding de saúde (ex.: `Onboarding_EVER_<plano>_<nome>.pdf`):
+quando a apólice Travel é aprovada, o cliente recebe um **PDF com o nome dele, o plano
+e os opcionais que contratou**, junto com o e-mail "Bem-vindo(a) à VUMI Travel VIP —
+<Nome> — Apólice <nº> | Sessão de Onboarding | HAMSA".
 
-| Arquivo | Uso |
-|---|---|
-| `manual-vumi-travel-vip.pdf` | o que vai para o cliente (e-mail / WhatsApp) |
-| `manual-vumi-travel-vip.html` | fonte editável; gera o PDF |
-| `hamsa-simbolo-360.png` | símbolo Hamsa reduzido usado na capa |
+## O que o guia traz (PT-BR, linguagem simples)
 
-**Genérico de propósito**: a capa tem campos em branco (titular, apólice,
-plano, vigência). A personalização já vem no Certificado da VUMI; manter um
-único manual evita retrabalho a cada venda.
+| Pág. | Conteúdo | Quando aparece |
+|---|---|---|
+| Capa | "Olá, <nome>!", apólice, plano (anual 30/45/90 dias ou simples), vigência, segurados, limite médico, opcionais ✓/– | sempre |
+| Passo a passo 1 | **Fiquei doente ou me machuquei**, com o aviso de que a **emergência do viagem é diferente da do saúde VUMI** e os números do Travel | sempre |
+| Passo a passo 2 | **Mala não chegou · voo atrasou · perdi a conexão · fui roubado** | só se contratou "imprevistos de viagem" |
+| Passo a passo 3 | **Precisei cancelar a viagem** (limite de US$ 2.500 no plano simples, US$ 1.500 no anual) | só se contratou cancelamento |
+| Passo a passo N | **Como pedir reembolso** (180 dias, documentos, revisão pela Hamsa antes do envio). Sem o anexo de imprevistos, mostra o que fazer com a companhia aérea | sempre |
+| Seu plano | Tabela de coberturas, com os opcionais **não contratados em cinza**, e checklist "antes de cada viagem" | sempre |
+| Contatos | Primeiros 10 minutos (app, credenciais), contatos de emergência do Travel e da Hamsa | sempre |
+
+Outras regras de personalização: aviso de limite de US$ 500 mil para segurados com 70 anos
+ou mais (a idade é calculada na data de início da vigência), nomes próprios corrigidos
+("MARIA DA SILVA" vira "Maria da Silva") e a numeração dos passos e das páginas se ajusta
+às seções presentes.
+
+## Como usar
+
+```bash
+cd onboarding/vumi-travel
+python3 gerar_onboarding.py cliente.json            # gera em ./saida/ (ignorado pelo git)
+```
+
+`cliente.json` aceita um objeto ou uma lista (veja `exemplos/cliente-exemplo.json`):
+
+```json
+{
+  "titular": "MARIA EXEMPLO DA SILVA",
+  "apolice": "7150000001",
+  "plano": "anual",                 // "anual" | "simples"
+  "dias_por_viagem": 45,            // só no anual: 30 | 45 | 90
+  "vigencia_inicio": "2026-11-01",
+  "vigencia_fim": "2027-10-31",
+  "segurados": [{"nome": "Maria Exemplo da Silva", "nascimento": "1968-03-14"}],
+  "opcionais": {"nao_medicos": true, "cancelamento": false}
+}
+```
+
+Para cada cliente saem `…pdf` (anexo), `…email.txt` (assunto + corpo) e `…html`.
+O render **falha** se algum conteúdo não couber na página A4, para nunca enviar PDF cortado.
+
+Requisitos: Python 3 + Jinja2, Node + Playwright (Chromium).
+
+Exemplos gerados em `exemplos/saida/`: Maria (anual, todos os opcionais, um segurado com 72
+anos, 7 págs.), Ana (anual, só cancelamento, 6 págs.) e Pedro (simples, sem opcionais, 5 págs.).
 
 ## Fonte dos dados
 
-Tudo foi tirado das **Condições de Cobertura Travel VIP 2026 (PT)**, as
-mesmas que o Kit de Boas-Vindas da VUMI linka:
+Condições de Cobertura Travel VIP 2026 (PT), o documento linkado no Kit de Boas-Vindas da VUMI:
 <https://s3.amazonaws.com/vumigroup.planes/Condiciones_Cobertura_travel/2026/condiciones_cobertura_travel_pt.pdf>
-Principais trechos usados: tabela de benefícios, §2 (duração, carência de 3 dias,
-extensões), §6 (benefícios e anexos opcionais), §7 (exclusões) e §8
-(notificação, reembolso de 180 dias, recursos, reclamações).
 
-⚠️ **Contatos de emergência**: o manual usa os da apólice Travel
-(+1 416 744 3870, +1 888 809 3493 nos EUA, emergencytravel@vumigroup.com) e
-manda o cliente conferir o verso da carteirinha. O card
-`seguradoras_emergencia_2026.png` lista outros números da VUMI
-(+1 214 276-6376 / +55 11 3197-6670 / notify@), que parecem ser da linha de
-saúde (IPMI). Isso precisa ser validado com a SDM/VUMI antes de distribuir.
+Contatos de emergência do Travel (diferentes dos do saúde VUMI do card
+`seguradoras_emergencia_2026.png`): +1 416 744 3870, +1 888 809 3493 (grátis nos EUA),
+emergencytravel@vumigroup.com.
 
-## Regenerar o PDF
+## Próximo passo (fora deste repositório)
 
-```bash
-node -e "
-const {chromium}=require('playwright');(async()=>{const b=await chromium.launch();
-const p=await b.newPage();await p.goto('file://'+process.cwd()+'/manual-vumi-travel-vip.html',{waitUntil:'networkidle'});
-await p.pdf({path:'manual-vumi-travel-vip.pdf',format:'A4',printBackground:true,preferCSSPageSize:true});await b.close();})()"
-```
-
-Ao atualizar para 2027: troque os valores da tabela (pág. 4) e o ano das
-Condições de Cobertura.
+Ligar este gerador à rotina automática de Kits de Boas-Vindas (a que hoje gera os rascunhos
+"📝 Kits de Boas-Vindas") para apólices `7150…` (Travel), lendo plano, vigência, segurados
+e opcionais do Certificado de Cobertura da VUMI.
