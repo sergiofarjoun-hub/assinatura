@@ -118,7 +118,35 @@ def email(ctx):
         "",
         "A HAMSA está aqui como seu primeiro telefonema para qualquer dúvida. Não hesite em nos contactar!",
     ])
-    return f"Assunto: {assunto}\n\n{corpo}\n"
+    return assunto, corpo
+
+
+def eh_travel(apolice):
+    """Apólices VUMI Travel VIP começam com 7150 (as de saúde VUMI, com 8000)."""
+    return re.sub(r"\D", "", str(apolice)).startswith("7150")
+
+
+def gerar(cliente, saida, pdf=True):
+    """Ponto de entrada para a rotina de Kits de Boas-Vindas.
+
+    Recebe o dict do cliente (formato de exemplos/cliente-exemplo.json) e devolve
+    {"pdf", "html", "assunto", "corpo"}. Levanta ValueError se faltar dado e
+    CalledProcessError se o PDF não couber no A4: nesses casos, não criar o rascunho.
+    """
+    saida = Path(saida)
+    saida.mkdir(parents=True, exist_ok=True)
+    env = Environment(loader=FileSystemLoader(AQUI), undefined=StrictUndefined, autoescape=True)
+    logo = "data:image/png;base64," + base64.b64encode((AQUI / "hamsa-simbolo-360.png").read_bytes()).decode()
+    ctx = contexto(dict(cliente))
+    base = saida / f"Onboarding_VUMI_Travel_VIP_{slug(ctx['titular'])}"
+    html = base.with_suffix(".html")
+    html.write_text(env.get_template("template.html.j2").render(c=ctx, logo=logo), encoding="utf-8")
+    assunto, corpo = email(ctx)
+    base.with_suffix(".email.txt").write_text(f"Assunto: {assunto}\n\n{corpo}\n", encoding="utf-8")
+    arquivo_pdf = base.with_suffix(".pdf")
+    if pdf:
+        subprocess.run(["node", str(AQUI / "render_pdf.js"), str(html), str(arquivo_pdf)], check=True)
+    return {"pdf": arquivo_pdf if pdf else None, "html": html, "assunto": assunto, "corpo": corpo}
 
 
 def main():
@@ -130,28 +158,16 @@ def main():
 
     dados = json.loads(Path(a.entrada).read_text(encoding="utf-8"))
     clientes = dados if isinstance(dados, list) else [dados]
-    saida = Path(a.saida)
-    saida.mkdir(parents=True, exist_ok=True)
-
-    env = Environment(loader=FileSystemLoader(AQUI), undefined=StrictUndefined, autoescape=True)
-    tpl = env.get_template("template.html.j2")
-    logo = "data:image/png;base64," + base64.b64encode((AQUI / "hamsa-simbolo-360.png").read_bytes()).decode()
 
     erros = 0
     for c in clientes:
         try:
-            ctx = contexto(dict(c))
-        except ValueError as e:
+            r = gerar(c, a.saida, pdf=not a.so_html)
+        except (ValueError, subprocess.CalledProcessError) as e:
             print(f"ERRO {c.get('apolice', '?')} {c.get('titular', '?')}: {e}", file=sys.stderr)
             erros += 1
             continue
-        base = saida / f"Onboarding_VUMI_Travel_VIP_{slug(ctx['titular'])}"
-        html = base.with_suffix(".html")
-        html.write_text(tpl.render(c=ctx, logo=logo), encoding="utf-8")
-        base.with_suffix(".email.txt").write_text(email(ctx), encoding="utf-8")
-        if not a.so_html:
-            subprocess.run(["node", str(AQUI / "render_pdf.js"), str(html), str(base.with_suffix(".pdf"))], check=True)
-        print(f"OK  {ctx['apolice']}  {ctx['titular']}  -> {base.name}")
+        print(f"OK  {c['apolice']}  -> {r['html'].stem}")
     sys.exit(1 if erros else 0)
 
 

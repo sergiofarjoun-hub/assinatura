@@ -61,8 +61,25 @@ Contatos de emergência do Travel (diferentes dos do saúde VUMI do card
 `seguradoras_emergencia_2026.png`): +1 416 744 3870, +1 888 809 3493 (grátis nos EUA),
 emergencytravel@vumigroup.com.
 
-## Próximo passo (fora deste repositório)
+## Integração com a rotina de Kits de Boas-Vindas
 
-Ligar este gerador à rotina automática de Kits de Boas-Vindas (a que hoje gera os rascunhos
-"📝 Kits de Boas-Vindas") para apólices `7150…` (Travel), lendo plano, vigência, segurados
-e opcionais do Certificado de Cobertura da VUMI.
+A rotina que gera os rascunhos "📝 Kits de Boas-Vindas" roda fora deste repositório (Mac/NAS).
+Para ligar o Travel nela, basta isto onde ela monta o rascunho de cada apólice:
+
+```python
+import sys; sys.path.insert(0, "/caminho/para/assinatura/onboarding/vumi-travel")
+import gerar_onboarding as travel
+
+if travel.eh_travel(apolice):                 # 7150… = Travel; 8000… = saúde VUMI
+    r = travel.gerar(cliente, pasta_saida)    # dict no formato de exemplos/cliente-exemplo.json
+    anexos.append(r["pdf"])                   # + os PDFs da VUMI que a rotina já anexa
+    assunto, corpo = r["assunto"], r["corpo"]
+```
+
+`gerar()` levanta `ValueError` se faltar dado (plano, vigência…) e `CalledProcessError`
+se o PDF não couber no A4. Nesses casos a rotina **não** deve criar o rascunho: o caso
+vai para conferência manual, como já acontece com "SEM EMAIL".
+
+**Ainda falta:** extrair do Certificado de Cobertura da VUMI os campos `plano`,
+`dias_por_viagem`, vigência, segurados e opcionais. Isso precisa de um certificado
+Travel real como amostra.

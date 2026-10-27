@@ -2,3 +2,4 @@
 /saida/
 # Nos exemplos, versionamos só PDF + texto do e-mail (o HTML tem o logo embutido em base64)
 exemplos/saida/*.html
+__pycache__/
