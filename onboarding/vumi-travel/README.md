@@ -40,6 +40,7 @@ python3 gerar_onboarding.py cliente.json            # gera em ./saida/ (ignorado
   "vigencia_inicio": "2026-11-01",
   "vigencia_fim": "2027-10-31",
   "pais_residencia": "Brasil",      // opcional; padrão Brasil (o seguro não cobre nada nele)
+  "agente": {"nome": "…", "empresa": "…", "email": "…", "telefone": "…"},  // opcional: apólice de agente
   "segurados": [{"nome": "Maria Exemplo da Silva", "nascimento": "1968-03-14"}],
   "opcionais": {"nao_medicos": true, "cancelamento": false}
 }

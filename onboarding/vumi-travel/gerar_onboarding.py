@@ -76,6 +76,15 @@ def contexto(c):
     com_70 = [nome_proprio(s["nome"].split()[0]) for s in segurados if s["idade"] is not None and s["idade"] >= 70]
     todos_70 = bool(com_70) and len(com_70) == len(segurados)
     op = c.get("opcionais", {})
+    # apólice de agente: assuntos comerciais (renovação, novos opcionais) vão para o agente
+    ag = c.get("agente")
+    if ag:
+        contato = " ou ".join(x for x in (ag.get("telefone") and f"WhatsApp {ag['telefone']}",
+                                          ag.get("email") and f"e-mail {ag['email']}") if x)
+        empresa = f" ({ag['empresa']})" if ag.get("empresa") else ""
+        comercial_txt = f"{ag['nome']}{empresa}" + (f" pelo {contato}" if contato else "")
+    else:
+        comercial_txt = "a Hamsa pelo WhatsApp +55 21 98455-5656"
     pais = c.get("pais_residencia", "Brasil")
     pais_de, pais_em = PAISES.get(pais, (f"de {pais}", f"em {pais}"))
     plano_txt = (f"Anual · até {c['dias_por_viagem']} dias por viagem" if c["plano"] == "anual"
@@ -96,6 +105,7 @@ def contexto(c):
         "op_nao_medicos": bool(op.get("nao_medicos")),
         "op_cancelamento": bool(op.get("cancelamento")),
         "cancelamento_limite": CANCELAMENTO[c["plano"]],
+        "comercial_txt": comercial_txt,
         "pais_de": pais_de,
         "pais_em": pais_em,
         # numeração dos "passo a passo": 1 emergência, depois só as páginas que existem
