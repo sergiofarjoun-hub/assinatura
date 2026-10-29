@@ -72,6 +72,25 @@ Contatos de emergência do Travel (diferentes dos do saúde VUMI do card
 `seguradoras_emergencia_2026.png`): +1 416 744 3870, +1 888 809 3493 (grátis nos EUA),
 emergencytravel@vumigroup.com.
 
+## Leitura automática do kit da VUMI
+
+`ler_kit_vumi.py` monta o JSON do cliente direto do Welcome Kit da VUMI (o e-mail com os 4 PDFs):
+
+```bash
+python3 ler_kit_vumi.py <kit> --json saida/cliente.json   # kit = .eml, JSON RAW do Gmail ou pasta com os PDFs
+python3 gerar_onboarding.py saida/cliente.json --saida saida
+```
+
+- A fonte é a **Application**: opção (☑ Single/Annual 30/45/90), opcionais (☑ Non-medical / Trip
+  cancellation), datas, país de residência, titular e acompanhantes com nascimento, e-mail e
+  **agente** ("As an agent, 145169 - Vera Lucia Evangelista Barreto").
+- O **Certificate of Coverage** confere opção, riders e vigência. Se divergirem, sai com código 2
+  ("CONFERÊNCIA MANUAL") e nada é gerado.
+- O agente vem de `agentes/agentes.json`, indexado pelo código de agente da VUMI (cartão do corretor
+  na capa, logo e contatos). Agente sem cadastro gera o guia sem o cartão e emite um aviso.
+- Validado em dois kits reais: 7150070871 (anual 30, titular e acompanhante, Brasil) e 7150070819
+  (anual 30, Emirados Árabes Unidos).
+
 ## Integração com a rotina de Kits de Boas-Vindas
 
 A rotina que gera os rascunhos "📝 Kits de Boas-Vindas" roda fora deste repositório (Mac/NAS).
