@@ -1,0 +1,5 @@
+# Saída de clientes reais: NUNCA versionar (repositório público, dados pessoais)
+/saida/
+# Nos exemplos, versionamos só PDF + texto do e-mail (o HTML tem o logo embutido em base64)
+exemplos/saida/*.html
+__pycache__/
