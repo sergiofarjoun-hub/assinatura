@@ -125,6 +125,17 @@ def contexto(c):
     }
 
 
+def fale_com(ag):
+    """Fecho do e-mail: cliente de corretor parceiro fala com o corretor dele, nunca com a Hamsa."""
+    if not ag:
+        return ("Para qualquer dúvida, fale com a Concierge HAMSA pelo WhatsApp +55 21 98455-5656"
+                " ou pelo e-mail concierge@hamsa.group.")
+    contato = " ou ".join(x for x in (ag.get("whatsapp") and f"pelo WhatsApp {ag['whatsapp']}",
+                                      ag.get("email") and f"pelo e-mail {ag['email']}") if x)
+    empresa = f", da {ag['empresa']}" if ag.get("empresa") else ""
+    return f"Para qualquer dúvida, fale com {ag['nome']}{empresa}" + (f", {contato}." if contato else ".")
+
+
 def email(ctx):
     assunto = (f"Bem-vindo(a) à VUMI Travel VIP — {ctx['titular']} — Apólice {ctx['apolice']}"
                " | Sessão de Onboarding | HAMSA")
@@ -148,7 +159,7 @@ def email(ctx):
         "Nos próximos dias, a VUMI também envia o Kit de Boas-Vindas (certificado e carteirinha)"
         " e as Credenciais de Boas-Vindas (login do app Travel VIP).",
         "",
-        "A HAMSA está aqui como seu primeiro telefonema para qualquer dúvida. Não hesite em nos contactar!",
+        fale_com(ctx["agente"]),
     ])
     return assunto, corpo
 
